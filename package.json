@@ -1,0 +1,26 @@
+{
+    "name": "@virketrang/cvr-api",
+    "type": "module",
+    "scripts": {
+        "dev": "tsx watch src/index.ts --env-file=.env",
+        "build": "tsc && tsc-alias",
+        "start": "node dist/index.js",
+        "deploy": "gcloud run deploy cvr-api --project=virketrang --source . --allow-unauthenticated --base-image nodejs24"
+    },
+    "dependencies": {
+        "@hono/node-server": "^1.18.1",
+        "@hono/zod-openapi": "^1.1.0",
+        "@scalar/hono-api-reference": "^0.9.13",
+        "@xmldom/xmldom": "^0.9.8",
+        "chalk": "^5.5.0",
+        "dotenv": "^17.2.1",
+        "hono": "^4.9.0",
+        "zod": "^4.0.16"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.17",
+        "tsc-alias": "^1.8.16",
+        "tsx": "^4.7.1",
+        "typescript": "^5.8.3"
+    }
+}
