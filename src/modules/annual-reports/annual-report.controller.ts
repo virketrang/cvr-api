@@ -1,6 +1,6 @@
 import { createRoute } from "@hono/zod-openapi";
 
-import { paramSchema, responseSchema } from "./annual-report.schema.js";
+import { responseSchema } from "./annual-report.schema.js";
 import AnnualReportService from "./annual-report.service.js";
 import type { Context, Env } from "hono";
 

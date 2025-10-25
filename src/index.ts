@@ -5,11 +5,34 @@ import { bearerAuth } from "hono/bearer-auth";
 
 import environment from "./environment.js";
 import {
+    corporateGroupFlattenedRoute,
+    corporateGroupFlattenedRouter,
     corporateGroupRoute,
     corporateGroupRouter,
 } from "./modules/corporate-group-structures/corporate-group.controller.js";
 import { annualReportsRoute, annualReportsRouter } from "./modules/annual-reports/annual-report.controller.js";
 import { Scalar } from "@scalar/hono-api-reference";
+
+export const versionRoute = createRoute({
+    method: "get",
+    path: "/api/version",
+    description: "Returns the current version of the API.",
+    responses: {
+        200: {
+            description: "API version retrieved successfully",
+            content: {
+                "application/json": {
+                    schema: z.object({
+                        version: z.string().openapi({
+                            description: "The current version of the API",
+                            example: "1.0.0",
+                        }),
+                    }),
+                },
+            },
+        },
+    },
+});
 
 const app = new OpenAPIHono();
 
@@ -21,7 +44,11 @@ app.use(
 );
 
 app.openapi(corporateGroupRoute, corporateGroupRouter);
+app.openapi(corporateGroupFlattenedRoute, corporateGroupFlattenedRouter);
 app.openapi(annualReportsRoute, annualReportsRouter);
+app.openapi(versionRoute, (ctx) => {
+    return ctx.json({ version: "1.0.0" });
+});
 
 app.get(
     "/documentation",
@@ -78,18 +105,23 @@ serve(
             {
                 "HTTP-Metode": "GET",
                 Endpoint: `${baseUrl}/api/v1/corporate-group/:cvrNumber`,
-                Beskrivelse:
+                Description:
                     "Returns the corporate group structure for a given danish business registration number (CVR-number).",
             },
             {
                 "HTTP-Metode": "GET",
                 Endpoint: `${baseUrl}/api/v1/annual-reports/:cvrNumber`,
-                Beskrivelse: "Returns the annual reports for a given danish business registration number (CVR-number).",
+                Description: "Returns the annual reports for a given danish business registration number (CVR-number).",
+            },
+            {
+                "HTTP-Metode": "GET",
+                Endpoint: `${baseUrl}/api/version`,
+                Description: "Returns the current version of the API.",
             },
             {
                 "HTTP-Metode": "GET",
                 Endpoint: `${baseUrl}/documentation`,
-                Beskrivelse: "API documentation and reference.",
+                Description: "API documentation and reference.",
             },
         ];
 

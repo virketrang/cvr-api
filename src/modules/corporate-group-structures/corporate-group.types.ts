@@ -606,3 +606,28 @@ export interface CorporateGroup {
     dateOfIncorporation: string | null;
     subsidiaries: CorporateGroup[] | null;
 }
+
+export interface CompanyFlattened {
+    name: string;
+    cvr: number;
+    corporateForm: CorporateForm;
+    financialYear: {
+        startDate: string | null;
+        endDate: string | null;
+    };
+    ownershipPercentage: {
+        interval: {
+            from: number | null;
+            to: number | null;
+        };
+        accurate: number | null;
+    };
+    dateOfIncorporation: string | null;
+    level: number;
+    parent: {
+        name: string;
+        cvr: number;
+    } | null;
+}
+
+export type CorporateGroupFlattened = CompanyFlattened[];

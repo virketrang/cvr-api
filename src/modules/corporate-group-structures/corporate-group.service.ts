@@ -1,4 +1,10 @@
-import type { Company, CorporateGroup, DanishBusinessRegistrationCompanyAPIResponse } from "./corporate-group.types.js";
+import type {
+    Company,
+    CompanyFlattened,
+    CorporateGroup,
+    CorporateGroupFlattened,
+    DanishBusinessRegistrationCompanyAPIResponse,
+} from "./corporate-group.types.js";
 import environment from "../../environment.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/cvr-permanent/virksomhed/_search";
@@ -209,7 +215,67 @@ export default abstract class CorporateGroupService {
         });
     }
 
-    public static async getCorporateGroup(cvrNumber: number): Promise<CorporateGroup | null> {
+    private static flattenCorporateGroup(
+        company: CorporateGroup,
+        level: number = 0,
+        parent?: { name: string; cvr: number }
+    ): CompanyFlattened[] {
+        let flattenedCompanies: CompanyFlattened[] = [];
+
+        if (!parent) {
+            const parentCompany: CompanyFlattened = {
+                name: company.name,
+                cvr: company.cvr,
+                corporateForm: company.corporateForm,
+                financialYear: company.financialYear,
+                ownershipPercentage: company.ownershipPercentage,
+                dateOfIncorporation: company.dateOfIncorporation,
+                level: level,
+                parent: null,
+            };
+
+            flattenedCompanies.push(parentCompany);
+        }
+
+        if (level > 0) {
+            // Don't add the root company
+            flattenedCompanies.push({
+                name: company.name,
+                cvr: company.cvr,
+                corporateForm: company.corporateForm,
+                financialYear: company.financialYear,
+                ownershipPercentage: company.ownershipPercentage,
+                dateOfIncorporation: company.dateOfIncorporation,
+                level,
+                parent: parent!,
+            });
+        }
+
+        if (company.subsidiaries) {
+            company.subsidiaries.forEach((subsidiary) => {
+                flattenedCompanies = flattenedCompanies.concat(
+                    this.flattenCorporateGroup(subsidiary, level + 1, { name: company.name, cvr: company.cvr })
+                );
+            });
+        }
+
+        return flattenedCompanies;
+    }
+
+    public static async getCorporateGroup(
+        cvrNumber: number,
+        options: { flatten: true }
+    ): Promise<CorporateGroupFlattened | null>;
+    public static async getCorporateGroup(
+        cvrNumber: number,
+        options?: { flatten?: false }
+    ): Promise<CorporateGroup | null>;
+    public static async getCorporateGroup(
+        cvrNumber: number,
+        options?: {
+            flatten?: boolean;
+        }
+    ): Promise<CorporateGroup | CorporateGroupFlattened | null> {
         const response = await CorporateGroupService.getCompanyFromTheDanishBusinessRegistrationAPI(cvrNumber);
 
         if (!response || response.hits.total === 0 || response.hits.hits.length < 1) return null;
@@ -245,7 +311,7 @@ export default abstract class CorporateGroupService {
 
         const subsidiaries = await CorporateGroupService.getSubsidiaries(cvrNumber);
 
-        return {
+        const corporateGroup = {
             name,
             cvr: cvrNumber,
             corporateForm: {
@@ -267,6 +333,12 @@ export default abstract class CorporateGroupService {
             dateOfIncorporation: dateOfIncorporation ? new Date(dateOfIncorporation).toISOString() : null,
             subsidiaries: subsidiaries,
         };
+
+        if (options?.flatten) {
+            return this.flattenCorporateGroup(corporateGroup);
+        }
+
+        return corporateGroup;
     }
 
     private static async getSubsidiaries(cvrNumber: number): Promise<CorporateGroup[] | null> {
