@@ -2,60 +2,59 @@ import environment from "../../environment.js";
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
 import type {
     AnnualReportResponse,
+    BatchAnnualReportResponse,
+    BatchAnnualReportResult,
     DanishBusinessRegistrationAccountingAPIResponse,
-    FilteredRecord,
+    ExtractResult,
+    ReportSkip,
     UnprocessedAnnualReport,
-    XBRLRecord,
 } from "./annual-report.types.js";
 
 import XBRLDocument from "./annual-report.utils.js";
-import Utils from "../../utils/index.js";
+import { ErrorCode, toAppError } from "../../utils/api-error.js";
+import { basicAuthHeader, fetchUpstreamJson, fetchWithTimeout } from "../../utils/http.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/offentliggoerelser/_search";
 
 export default abstract class AnnualReportService {
     public static async getAnnualReportsFromDanishBusinessRegistrationAPI(
-        cvrNumber: number
+        cvrNumber: number,
     ): Promise<Array<UnprocessedAnnualReport>> {
-        const response = await fetch(CVR_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${Buffer.from(
-                    `${environment.CVR_API_USERNAME}:${environment.CVR_API_PASSWORD}`
-                ).toString("base64")}`,
-            },
-            body: JSON.stringify({
-                query: {
-                    bool: {
-                        must: [
-                            {
-                                term: {
-                                    cvrNummer: cvrNumber,
-                                },
-                            },
-                            {
-                                term: {
-                                    offentliggoerelsestype: "regnskab",
-                                },
-                            },
-                            {
-                                query_string: {
-                                    query: 'dokumenter.dokumentMimeType:"application/xml"',
-                                },
-                            },
-                        ],
-                    },
+        const data = await fetchUpstreamJson<DanishBusinessRegistrationAccountingAPIResponse>(
+            "Det offentlige register",
+            CVR_API_URL,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: basicAuthHeader(environment.CVR_API_USERNAME, environment.CVR_API_PASSWORD),
                 },
-                size: 2999,
-            }),
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch data from CVR API: ${response.statusText}`);
-        }
-
-        const data: DanishBusinessRegistrationAccountingAPIResponse = await response.json();
+                body: JSON.stringify({
+                    query: {
+                        bool: {
+                            must: [
+                                {
+                                    term: {
+                                        cvrNummer: cvrNumber,
+                                    },
+                                },
+                                {
+                                    term: {
+                                        offentliggoerelsestype: "regnskab",
+                                    },
+                                },
+                                {
+                                    query_string: {
+                                        query: 'dokumenter.dokumentMimeType:"application/xml"',
+                                    },
+                                },
+                            ],
+                        },
+                    },
+                    size: 2999,
+                }),
+            },
+        );
 
         const financialStatements = data.hits.hits.map((hit) => hit._source);
 
@@ -65,15 +64,22 @@ export default abstract class AnnualReportService {
                     report.dokumenter
                         .filter((document) => document.dokumentMimeType === "application/xml")
                         .map(async (document) => {
-                            const xmlResponse = await fetch(document.dokumentUrl);
-                            // remove all xbrli: prefixes and :xbrli suffixes from the XML document
-                            const xmlText = await xmlResponse.text();
+                            let xmlText = "";
+                            try {
+                                const xmlResponse = await fetchWithTimeout(document.dokumentUrl);
+                                if (xmlResponse.ok) {
+                                    xmlText = await xmlResponse.text();
+                                }
+                            } catch {
+                                // Leave xmlText empty; extractAnnualReportFromXML will record
+                                // this document as a MALFORMED_XML skip rather than crashing.
+                            }
 
                             return {
                                 ...document,
                                 xmlText,
                             };
-                        })
+                        }),
                 );
 
                 return {
@@ -84,34 +90,47 @@ export default abstract class AnnualReportService {
                     },
                     documents,
                 };
-            })
+            }),
         );
 
         return annualReports;
     }
 
-    public static extractAnnualReportFromXML(xml: string) {
-        const xbrlDocument = new XBRLDocument(xml);
+    public static extractAnnualReportFromXML(xml: string): ExtractResult {
+        // The XBRLDocument constructor and extractTaxonomyData throw AppErrors with
+        // specific codes (MALFORMED_XML, MISSING_NAMESPACE, MALFORMED_UNIT,
+        // MISSING_PERIOD). Catch them here and convert to a typed skip reason so the
+        // caller can report *which* document failed and why.
+        try {
+            const xbrlDocument = new XBRLDocument(xml);
 
-        const taxonomy = xbrlDocument.getTaxonomy();
+            const taxonomy = xbrlDocument.getTaxonomy();
 
-        if (!taxonomy) {
-            console.warn("No taxonomy found in the annual report XML.");
-            return null;
+            if (!taxonomy) {
+                return {
+                    ok: false,
+                    errorCode: ErrorCode.UNKNOWN_TAXONOMY,
+                    message: "Årsrapporten angiver ingen taksonomi (schemaRef mangler eller er ugyldig).",
+                };
+            }
+
+            const acceptedTaxonomies: string[] = ÅRL_TAXONOMY.schema;
+
+            if (!acceptedTaxonomies.some((t) => taxonomy.includes(t))) {
+                return {
+                    ok: false,
+                    errorCode: ErrorCode.UNKNOWN_TAXONOMY,
+                    message: `Årsrapporten anvender en ukendt taksonomi (${taxonomy}) og kunne ikke læses.`,
+                };
+            }
+
+            const report = xbrlDocument.extractTaxonomyData();
+
+            return { ok: true, report };
+        } catch (error) {
+            const appError = toAppError(error);
+            return { ok: false, errorCode: appError.errorCode, message: appError.message };
         }
-
-        const acceptedTaxonomies: string[] = ÅRL_TAXONOMY.schema;
-
-        if (!acceptedTaxonomies.some((t) => taxonomy.includes(t))) {
-            console.warn(
-                `The taxonomy ${taxonomy} is not accepted. Accepted taxonomies are: ${acceptedTaxonomies.join(", ")}`
-            );
-            return null;
-        }
-
-        const annualReport = xbrlDocument.extractTaxonomyData();
-
-        return annualReport;
     }
 
     public static async getAnnualReports(cvrNumber: number): Promise<AnnualReportResponse> {
@@ -122,34 +141,110 @@ export default abstract class AnnualReportService {
                 total: 0,
                 status: "success",
                 results: [],
+                skipped: [],
             };
         }
 
-        const annualReports = xmlAnnualReports
-            .map((xmlAnnualReport) => {
-                const documents = xmlAnnualReport.documents
-                    .map((document) => {
-                        const annualReport = AnnualReportService.extractAnnualReportFromXML(document.xmlText);
+        const annualReports: AnnualReportResponse["results"] = [];
+        const skipped: ReportSkip[] = [];
 
-                        if (!annualReport) {
-                            console.warn(
-                                `No valid annual report found for CVR number ${xmlAnnualReport.cvrNumber} in document ${document.dokumentUrl}`
-                            );
-                            return null;
-                        }
+        for (const xmlAnnualReport of xmlAnnualReports) {
+            for (const document of xmlAnnualReport.documents) {
+                const result = AnnualReportService.extractAnnualReportFromXML(document.xmlText);
 
-                        return AnnualReportService.extractAnnualReportFromXML(document.xmlText);
-                    })
-                    .filter((doc) => doc !== null);
+                if (result.ok) {
+                    annualReports.push(result.report);
+                } else {
+                    // Record WHY this document was dropped, with the year + document URL,
+                    // so the client can tell the user (e.g. "2023: unknown taxonomy").
+                    skipped.push({
+                        reportingPeriodEndDate: xmlAnnualReport.reportingPeriod?.endDate ?? null,
+                        documentUrl: document.dokumentUrl ?? null,
+                        errorCode: result.errorCode,
+                        message: result.message,
+                    });
+                    console.warn(
+                        `Skipped report for CVR ${xmlAnnualReport.cvrNumber} (${result.errorCode}) ` +
+                            `[${xmlAnnualReport.reportingPeriod?.endDate ?? "ukendt periode"}]: ${result.message}`,
+                    );
+                }
+            }
+        }
 
-                return documents;
-            })
-            .flat();
+        annualReports.sort((a, b) => {
+            const dateA = new Date(a.reportingPeriod.reportingPeriodEndDate);
+            const dateB = new Date(b.reportingPeriod.reportingPeriodEndDate);
+            return dateB.getTime() - dateA.getTime();
+        });
 
         return {
             results: annualReports,
             total: annualReports.length,
             status: "success",
+            skipped,
+        };
+    }
+
+    public static async getAnnualReportsBatch(cvrNumbers: number[]): Promise<BatchAnnualReportResponse> {
+        // Concurrency limit: fan out, but not unboundedly — distribution.virk.dk
+        // is an upstream we don't want to flood. Process in chunks of CONCURRENCY.
+        const CONCURRENCY = 10;
+
+        const results: BatchAnnualReportResult[] = [];
+
+        for (let i = 0; i < cvrNumbers.length; i += CONCURRENCY) {
+            const chunk = cvrNumbers.slice(i, i + CONCURRENCY);
+
+            const chunkResults = await Promise.all(
+                chunk.map(async (cvrNumber): Promise<BatchAnnualReportResult> => {
+                    try {
+                        const response = await AnnualReportService.getAnnualReports(cvrNumber);
+                        return {
+                            cvrNumber: String(cvrNumber).padStart(8, "0"),
+                            status: response.status,
+                            total: response.total,
+                            results: response.results,
+                            skipped: response.skipped,
+                        };
+                    } catch (error) {
+                        // Isolate the failure to this one company and carry a typed code
+                        // so the client can distinguish "upstream down" from "bad data".
+                        const appError = toAppError(error);
+                        console.warn(
+                            `Batch: failed to fetch annual reports for CVR ${cvrNumber} ` +
+                                `(${appError.errorCode}): ${appError.message}`,
+                        );
+                        return {
+                            cvrNumber: String(cvrNumber).padStart(8, "0"),
+                            status: "error",
+                            total: 0,
+                            results: [],
+                            skipped: [],
+                            errorCode: appError.errorCode,
+                            message: appError.message,
+                        };
+                    }
+                }),
+            );
+
+            results.push(...chunkResults);
+        }
+
+        // Roll the per-company statuses up into one overall status.
+        const successCount = results.filter((r) => r.status === "success").length;
+        let overallStatus: "success" | "partial" | "error";
+        if (successCount === results.length) {
+            overallStatus = "success";
+        } else if (successCount === 0) {
+            overallStatus = "error";
+        } else {
+            overallStatus = "partial";
+        }
+
+        return {
+            total: results.length,
+            status: overallStatus,
+            results,
         };
     }
 }

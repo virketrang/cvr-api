@@ -11,6 +11,9 @@
 # deps
 node_modules/
 
+# build output (rebuilt on deploy from source)
+dist/
+
 # env
 .env
 .env.production
@@ -26,3 +29,4 @@ lerna-debug.log*
 
 # misc
 .DS_Store
+.claude

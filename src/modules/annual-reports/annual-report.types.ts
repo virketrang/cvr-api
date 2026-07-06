@@ -1,3 +1,26 @@
+import type { ErrorCode } from "../../utils/api-error.js";
+
+/**
+ * A single annual-report document that could not be turned into a usable report,
+ * with the reason. Surfaced to the client so the user knows which year/document
+ * failed and why (e.g. an unknown taxonomy) instead of it silently vanishing.
+ */
+export interface ReportSkip {
+    reportingPeriodEndDate: string | null;
+    documentUrl: string | null;
+    errorCode: ErrorCode;
+    message: string;
+}
+
+/**
+ * Result of trying to extract one XBRL document: either a usable report, or a
+ * typed reason it was skipped. Replaces the old `AnnualReport | null` so the
+ * caller can report *why* a document was dropped.
+ */
+export type ExtractResult =
+    | { ok: true; report: AnnualReport<Account> }
+    | { ok: false; errorCode: ErrorCode; message: string };
+
 export interface UnprocessedAnnualReport {
     cvrNumber: number;
     reportingPeriod: {
@@ -23,6 +46,14 @@ export type XBRLContext = {
     identifier: string | null;
     instant: string | null;
     explicitMember: string | null;
+    /**
+     * All dimension members on the context's scenario, both explicit (QName
+     * members like `SubsidiaryMember`) and typed (e.g. a `relatedEntityIdentifier`
+     * value). Used to group dimensional facts — such as related entities — that
+     * are spread across several contexts (e.g. a duration context for the name and
+     * an instant context for the ownership share) but share the same dimensions.
+     */
+    dimensions: Array<{ dimension: string; member: string }>;
 };
 
 export type XBRLRecord = Array<{
@@ -52,10 +83,51 @@ export interface Account {
     label: string;
 }
 
+export interface RelatedEntity {
+    cvrNumber: string | null;
+    legalEntityIdentifier: string | null;
+    pNumber: string | null;
+    name: string | null;
+    registeredOffice: string | null;
+    legalForm: string | null;
+    ownershipPercentage: number | null;
+}
+
+export interface ConsolidatedFinancialStatementsSubsidiary {
+    cvrNumber: string | null;
+    legalEntityIdentifier: string | null;
+    pNumber: string | null;
+    name: string | null;
+    registeredOffice: string | null;
+    placeWhereConsolidatedFinancialStatementsMayBeObtained: string | null;
+}
+
+/**
+ * A non-fatal data-quality note attached to a single annual report. Currently only
+ * SCALING_REPAIRED: an amount carried a negative `decimals` (precision indicator)
+ * but lacked the trailing zeros that precision implies — a sign the filer misused
+ * `decimals` as a scale — so we multiplied it back up. Surfaced so the consumer
+ * knows the value was adjusted and can sanity-check it.
+ */
+export interface ReportWarning {
+    code: "SCALING_REPAIRED";
+    message: string;
+    repairedFields: Array<{
+        statement: "balanceSheet" | "incomeStatement" | "notes";
+        field: string;
+        originalValue: number;
+        repairedValue: number;
+        factor: number;
+    }>;
+}
+
 export interface ÅRLTaxonomy {
     schema: string[];
     body: {
         reportingPeriod: ReportingPeriod<TaxonomyFact>;
+        notes: Notes<TaxonomyFact>;
+        informationOnRelatedEntities: InformationOnRelatedEntities<TaxonomyFact>;
+        consolidatedFinancialStatements: ConsolidatedFinancialStatements<TaxonomyFact>;
         balanceSheet: BalanceSheet<TaxonomyFact>;
         incomeStatement: IncomeStatement<TaxonomyFact>;
     };
@@ -71,12 +143,19 @@ export type AnnualReportResponse = {
     total: number;
     status: "failed" | "success" | "error";
     results: Array<AnnualReport<Account>>;
+    /** Documents that were fetched but could not be parsed into a usable report. */
+    skipped: ReportSkip[];
 };
 
 export interface AnnualReport<T> {
     reportingPeriod: ReportingPeriod<string>;
-    balanceSheet: BalanceSheet<T>;
+    unit: string;
+    balancesheet: BalanceSheet<T>;
     incomeStatement: IncomeStatement<T>;
+    notes: Notes<T>;
+    relatedEntities: RelatedEntity[];
+    consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[];
+    warnings: ReportWarning[];
 }
 
 export interface ReportingPeriod<T> {
@@ -131,6 +210,33 @@ export interface DanishBusinessRegistrationAccountingAPIResponse {
     };
 }
 
+export interface Notes<T> {
+    amortisationOfIntangibleAssets: T;
+    impairmentLossesOfIntangibleAssets: T;
+    accumulatedImpairmentLossesAndAmortisationOfIntangibleAssets: T;
+}
+
+export interface InformationOnRelatedEntities<T> {
+    identificationNumberCvrOfRelatedEntity: T;
+    legalEntityIdentifierOfRelatedEntity: T;
+    identificationNumberPnrOfRelatedEntity: T;
+    relatedEntityName: T;
+    relatedEntityRegisteredOffice: T;
+    relatedEntityLegalForm: T;
+    shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity: T;
+}
+
+export interface ConsolidatedFinancialStatements<T> {
+    subsidiaries: {
+        identificationNumberCvrOfRelatedEntityConsolidatedFinancialStatements: T;
+        legalEntityIdentifierOfRelatedEntityConsolidatedFinancialStatements: T;
+        identificationNumberPnrOfRelatedEntityConsolidatedFinancialStatements: T;
+        relatedEntityNameConsolidatedFinancialStatements: T;
+        relatedEntityRegisteredOfficeConsolidatedFinancialStatements: T;
+        placeAtWhichConsolidatedFinancialStatementsMayBeObtainedIfParentIsNondanishEntity: T;
+    };
+}
+
 export interface BalanceSheet<T> {
     assets: T;
     nonCurrentAssets: T;
@@ -176,6 +282,7 @@ export interface BalanceSheet<T> {
     longtermReceivablesFromAssociates: T;
     longtermReceivablesFromParticipatingInterests: T;
     longtermReceivablesFromJointVentures: T;
+    longtermReceivablesFromOwnersOtherCompanies: T;
     otherLongtermInvestments: T;
     otherLongtermReceivables: T;
     longtermReceivablesFromOwnersAndManagement: T;
@@ -216,6 +323,7 @@ export interface BalanceSheet<T> {
     timingDifferencesShorttermReceivablesEspeciallyUtilities: T;
     currentContractAssets: T;
     derivativeFinancialInstrumentsShorttermAssets: T;
+    derivativeFinancialInstrumentsAssets: T;
     shorttermInvestments: T;
     otherShorttermPayables: T;
     shorttermInvestmentsInGroupEnterprises: T;
@@ -303,6 +411,8 @@ export interface BalanceSheet<T> {
     payablesToJointVentures: T;
     shorttermPayablesToJointVentures: T;
     longtermPayablesToJointVentures: T;
+    shorttermPayablesToOwnersOtherCompanies: T;
+    longtermLPayablesToOwnersOtherCompanies: T;
     taxPayables: T;
     longtermTaxPayables: T;
     shorttermTaxPayables: T;
@@ -451,3 +561,21 @@ enum DocumentType {
     "DELAARSRAPPORT_ESEF" = "DELAARSRAPPORT_ESEF",
     "HALVAARSRAPPORT_ESEF" = "HALVAARSRAPPORT_ESEF",
 }
+
+export type BatchAnnualReportResult = {
+    cvrNumber: string;
+    status: "failed" | "success" | "error";
+    total: number;
+    results: AnnualReportResponse["results"];
+    /** Per-document failures for THIS company (e.g. unknown taxonomy for one year). */
+    skipped: ReportSkip[];
+    /** Set when the whole company failed (e.g. upstream unavailable). */
+    errorCode?: ErrorCode;
+    message?: string;
+};
+
+export type BatchAnnualReportResponse = {
+    total: number;
+    status: "success" | "partial" | "error";
+    results: BatchAnnualReportResult[];
+};

@@ -1,11 +1,11 @@
 import { createRoute } from "@hono/zod-openapi";
-import { z } from "@hono/zod-openapi";
 
 import CorporateGroupService from "./corporate-group.service.js";
+import { AppError, errorResponses, ErrorCode } from "../../utils/api-error.js";
 import { responseSchema, paramSchema, responseFlattenedSchema } from "./corporate-group.schema.js";
 import type { Context, Env } from "hono";
 
-export const corporateGroupRoute = createRoute({
+export const route = createRoute({
     method: "get",
     path: "/api/corporate-groups/:cvrNumber",
     description: "Returns the corporate group structure for a given danish business registration number (CVR-number).",
@@ -21,20 +21,11 @@ export const corporateGroupRoute = createRoute({
                 },
             },
         },
-        404: {
-            description: "Corporate group structure not found",
-            content: {
-                "application/json": {
-                    schema: z.object({
-                        message: z.string(),
-                    }),
-                },
-            },
-        },
+        ...errorResponses,
     },
 });
 
-export const corporateGroupFlattenedRoute = createRoute({
+export const flattenedRoute = createRoute({
     method: "get",
     path: "/api/corporate-groups/:cvrNumber/flattened",
     description:
@@ -51,20 +42,11 @@ export const corporateGroupFlattenedRoute = createRoute({
                 },
             },
         },
-        404: {
-            description: "Corporate group structure not found",
-            content: {
-                "application/json": {
-                    schema: z.object({
-                        message: z.string(),
-                    }),
-                },
-            },
-        },
+        ...errorResponses,
     },
 });
 
-export const corporateGroupRouter = async (
+export const router = async (
     ctx: Context<
         Env,
         "/api/corporate-groups/:cvrNumber",
@@ -80,25 +62,23 @@ export const corporateGroupRouter = async (
                 };
             };
         }
-    >
+    >,
 ) => {
     const cvrNumber = ctx.req.param("cvrNumber");
 
     const corporateGroup = await CorporateGroupService.getCorporateGroup(Number(cvrNumber));
 
     if (!corporateGroup) {
-        return ctx.json(
-            {
-                message: `No corporate group structure found for CVR number ${cvrNumber}.`,
-            },
-            404
+        throw new AppError(
+            ErrorCode.NOT_FOUND,
+            `Der blev ikke fundet en koncernstruktur for CVR-nummer ${cvrNumber}.`,
         );
     }
 
     return ctx.json(corporateGroup, 200);
 };
 
-export const corporateGroupFlattenedRouter = async (
+export const flattenedRouter = async (
     ctx: Context<
         Env,
         "/api/corporate-groups/:cvrNumber/flattened",
@@ -114,18 +94,16 @@ export const corporateGroupFlattenedRouter = async (
                 };
             };
         }
-    >
+    >,
 ) => {
     const cvrNumber = ctx.req.param("cvrNumber");
 
     const corporateGroup = await CorporateGroupService.getCorporateGroup(Number(cvrNumber), { flatten: true });
 
     if (!corporateGroup) {
-        return ctx.json(
-            {
-                message: `No corporate group structure found for CVR number ${cvrNumber}.`,
-            },
-            404
+        throw new AppError(
+            ErrorCode.NOT_FOUND,
+            `Der blev ikke fundet en koncernstruktur for CVR-nummer ${cvrNumber}.`,
         );
     }
 

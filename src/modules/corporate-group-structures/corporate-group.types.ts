@@ -1,3 +1,232 @@
+export interface CorporateForm {
+    code: number | null;
+    name: string | null;
+    abbreviation: string | null;
+}
+
+export interface FinancialYear {
+    startDate: string | null;
+    endDate: string | null;
+}
+
+export interface OwnershipPercentage {
+    interval: {
+        from: number | null;
+        to: number | null;
+    };
+    accurate: boolean;
+}
+
+export interface Period {
+    gyldigFra: string;
+    gyldigTil: string | null;
+}
+
+export interface Address {
+    landekode: string;
+    fritekst: string | null;
+    vejkode: number;
+    kommune: {
+        kommuneKode: number;
+        kommuneNavn: string;
+        periode: Period;
+        sidstOpdateret: string;
+    };
+    husnummerFra: number;
+    adresseId: string;
+    sidstValideret: string;
+    husnummerTil: number | null;
+    bogstavFra: string | null;
+    bogstavTil: string | null;
+    etage: string | null;
+    sidedoer: string | null;
+    conavn: string | null;
+    postboks: string | null;
+    vejnavn: string;
+    bynavn: string | null;
+    postnummer: number;
+    postdistrikt: string;
+    periode: Period;
+    sidstOpdateret: string;
+}
+
+export interface ContactInfo {
+    kontaktoplysning: string | null;
+    hemmelig: boolean;
+    periode: Period;
+    sidstOpdateret: string;
+}
+
+export interface Name {
+    navn: string;
+    periode: Period;
+    sidstOpdateret: string | null;
+}
+
+export interface Branch {
+    branchekode: string;
+    branchetekst: string;
+    periode: Period;
+    sidstOpdateret: string;
+}
+
+export interface VirksomhedsForm {
+    virksomhedsformkode: number;
+    kortBeskrivelse: string;
+    langBeskrivelse: string;
+    ansvarligDataleverandoer: string;
+    periode: Period;
+    sidstOpdateret: string;
+}
+
+export interface Attribute {
+    sekvensnr: number;
+    type: string;
+    vaerditype: string;
+    vaerdier: Array<{
+        vaerdi: string;
+        periode: Period;
+        sidstOpdateret: string;
+    }>;
+}
+
+export interface Employment {
+    aar: number;
+    antalInklusiveEjere?: number | null;
+    antalAarsvaerk: number | null;
+    antalAnsatte: number | null;
+    sidstOpdateret: string;
+    intervalKodeAntalInklusivEjere?: string | null;
+    intervalKodeAntalAarsvaerk: string | null;
+    intervalKodeAntalAnsatte: string | null;
+}
+
+export interface QuarterlyEmployment extends Employment {
+    kvartal: number;
+}
+
+export interface MonthlyEmployment extends Employment {
+    maaned: number;
+}
+
+export interface Deltager {
+    enhedsNummer: number;
+    enhedstype: string;
+    forretningsnoegle: number | null;
+    organisationstype: string | null;
+    sidstIndlaest: string;
+    sidstOpdateret: string;
+    navne: Name[];
+    adresseHemmelig: boolean;
+    adresseHemmeligUndtagelse: boolean;
+    adresseOpdateringOphoert: boolean;
+    beliggenhedsadresse: Address[];
+    postadresse: Address[];
+}
+
+export interface Organisation {
+    enhedsNummerOrganisation: number;
+    hovedtype: string;
+    organisationsNavn: Name[];
+    attributter: Attribute[];
+    medlemsData: Array<{
+        attributter: Attribute[];
+    }>;
+}
+
+export interface DeltagerRelation {
+    deltager: Deltager;
+    kontorsteder: [];
+    organisationer: Organisation[];
+}
+
+/** A merger (fusion) or demerger (spaltning) entry as the registry reports it. */
+export interface CorporateEventSource {
+    enhedsNummerOrganisation: number;
+    organisationsNavn: Name[];
+    indgaaende: Attribute[];
+    udgaaende: Attribute[];
+}
+
+export interface VirksomhedMetadata {
+    nyesteNavn: Name;
+    nyesteBinavne: string[];
+    nyesteVirksomhedsform: VirksomhedsForm;
+    nyesteBeliggenhedsadresse: Address;
+    nyesteHovedbranche: Branch;
+    nyesteBibranche1: Branch;
+    nyesteBibranche2: Branch;
+    nyesteBibranche3: Branch;
+    nyesteStatus: string | null;
+    nyesteKontaktoplysninger: ContactInfo[];
+    antalPenheder: number;
+    nyesteAarsbeskaeftigelse: Employment;
+    nyesteKvartalsbeskaeftigelse: QuarterlyEmployment;
+    nyesteMaanedsbeskaeftigelse: MonthlyEmployment;
+    nyesteErstMaanedsbeskaeftigelse: MonthlyEmployment;
+    sammensatStatus: string;
+    stiftelsesDato: string;
+    virkningsDato: string;
+}
+
+export interface Virksomhed {
+    cvrNummer: number;
+    regNumber: [];
+    brancheAnsvarskode: string | null;
+    reklamebeskyttet: boolean;
+    navne: Name[];
+    binavne: Name[];
+    postadresse: [];
+    beliggenhedsadresse: Address[];
+    telefonNummer: ContactInfo[];
+    telefaxNummer: ContactInfo[];
+    sekundærtTelefonNummer: ContactInfo[];
+    sekundærtTelefaxNummer: ContactInfo[];
+    elektroniskPost: ContactInfo[];
+    hjemmeside: [];
+    obligatoriskEmail: [];
+    livsforloeb: Array<{
+        periode: Period;
+        sidstOpdateret: string;
+    }>;
+    hovedbranche: Branch[];
+    bibranche1: Branch[];
+    bibranche2: Branch[];
+    bibranche3: Branch[];
+    status: [];
+    virksomhedsstatus: Array<{
+        status: string;
+        periode: Period;
+        sidstOpdateret: string;
+    }>;
+    virksomhedsform: VirksomhedsForm[];
+    aarsbeskaeftigelse: Employment[];
+    kvartalsbeskaeftigelse: QuarterlyEmployment[];
+    maanedsbeskaeftigelse: MonthlyEmployment[];
+    erstMaanedsbeskaeftigelse: MonthlyEmployment[];
+    attributter: Attribute[];
+    penheder: Array<{
+        pNummer: number;
+        periode: Period;
+        sidstOpdateret: string;
+    }>;
+    deltagerRelation: DeltagerRelation[];
+    fusioner: CorporateEventSource[];
+    spaltninger: CorporateEventSource[];
+    virksomhedMetadata: VirksomhedMetadata;
+    samtId: number;
+    fejlRegistreret: boolean;
+    dataAdgang: 0;
+    enhedsNummer: number;
+    enhedstype: string;
+    sidstIndlaest: string;
+    sidstOpdateret: string;
+    fejlVedIndlaesning: boolean;
+    naermesteFremtidigeDato: string | null;
+    fejlBeskrivelse: null;
+    virkningsAktoer: string;
+}
+
 export interface DanishBusinessRegistrationCompanyAPIResponse {
     took: number;
     timed_out: boolean;
@@ -16,613 +245,91 @@ export interface DanishBusinessRegistrationCompanyAPIResponse {
             _id: string;
             _score: number | null;
             _source: {
-                Vrvirksomhed: {
-                    cvrNummer: number;
-                    regNumber: [];
-                    brancheAnsvarskode: string | null;
-                    reklamebeskyttet: boolean;
-                    navne: Array<{
-                        navn: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    binavne: Array<{
-                        navn: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    postadresse: [];
-                    beliggenhedsadresse: Array<{
-                        landekode: string;
-                        fritekst: string | null;
-                        vejkode: number;
-                        kommune: {
-                            kommuneKode: number;
-                            kommuneNavn: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        husnummerFra: number;
-                        adresseId: string;
-                        sidstValideret: string;
-                        husnummerTil: number | null;
-                        bogstavFra: string | null;
-                        bogstavTil: string | null;
-                        etage: string | null;
-                        sidedoer: string | null;
-                        conavn: string | null;
-                        postboks: string | null;
-                        vejnavn: string;
-                        bynavn: string | null;
-                        postnummer: number;
-                        postdistrikt: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    telefonNummer: Array<{
-                        kontaktoplysning: string | null;
-                        hemmelig: boolean;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    telefaxNummer: Array<{
-                        kontaktoplysning: string | null;
-                        hemmelig: boolean;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    sekundærtTelefonNummer: Array<{
-                        kontaktoplysning: string | null;
-                        hemmelig: boolean;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    sekundærtTelefaxNummer: Array<{
-                        kontaktoplysning: string | null;
-                        hemmelig: boolean;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    elektroniskPost: Array<{
-                        kontaktoplysning: string | null;
-                        hemmelig: boolean;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    hjemmeside: [];
-                    obligatoriskEmail: [];
-                    livsforloeb: Array<{
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    hovedbranche: {
-                        branchekode: string;
-                        branchetekst: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    };
-                    bibranche1: Array<{
-                        branchekode: string;
-                        branchetekst: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    bibranche2: Array<{
-                        branchekode: string;
-                        branchetekst: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    bibranche3: Array<{
-                        branchekode: string;
-                        branchetekst: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    status: [];
-                    virksomhedsstatus: Array<{
-                        status: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    virksomhedsform: Array<{
-                        virksomhedsformkode: number;
-                        kortBeskrivelse: string;
-                        langBeskrivelse: string;
-                        ansvarligDataleverandoer: string;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    aarsbeskaeftigelse: Array<{
-                        aar: number;
-                        antalInklusiveEjere: number | null;
-                        antalAarsvaerk: number | null;
-                        antalAnsatte: number | null;
-                        sidstOpdateret: string;
-                        intervalKodeAntalInklusivEjere: string | null;
-                        intervalKodeAntalAarsvaerk: string | null;
-                        intervalKodeAntalAnsatte: string | null;
-                    }>;
-                    kvartalsbeskaeftigelse: Array<{
-                        aar: number;
-                        kvartal: number;
-                        antalAarsvaerk: number | null;
-                        antalAnsatte: number | null;
-                        sidstOpdateret: string;
-                        intervalKodeAntalAarsvaerk: string | null;
-                        intervalKodeAntalAnsatte: string | null;
-                    }>;
-                    maanedsbeskaeftigelse: Array<{
-                        aar: number;
-                        maaned: number;
-                        antalAarsvaerk: number | null;
-                        antalAnsatte: number | null;
-                        sidstOpdateret: string;
-                        intervalKodeAntalAarsvaerk: string | null;
-                        intervalKodeAntalAnsatte: string | null;
-                    }>;
-                    erstMaanedsbeskaeftigelse: Array<{
-                        aar: number;
-                        maaned: number;
-                        antalAarsvaerk: number | null;
-                        antalAnsatte: number | null;
-                        sidstOpdateret: string;
-                        intervalKodeAntalAarsvaerk: string | null;
-                        intervalKodeAntalAnsatte: string | null;
-                    }>;
-                    attributter: Array<{
-                        sekvensnr: number;
-                        type: string;
-                        vaerditype: string;
-                        vaerdier: Array<{
-                            vaerdi: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        }>;
-                    }>;
-                    penheder: Array<{
-                        pNummer: number;
-                        periode: {
-                            gyldigFra: string;
-                            gyldigTil: string | null;
-                        };
-                        sidstOpdateret: string;
-                    }>;
-                    deltagerRelation: Array<{
-                        deltager: {
-                            enhedsNummer: number;
-                            enhedstype: string;
-                            forretningsnoegle: number | null;
-                            organisationstype: string | null;
-                            sidstIndlaest: string;
-                            sidstOpdateret: string;
-                            navne: Array<{
-                                navn: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string | null;
-                            }>;
-                            adresseHemmelig: boolean;
-                            adresseHemmeligUndtagelse: boolean;
-                            adresseOpdateringOphoert: boolean;
-                            beliggenhedsadresse: Array<{
-                                landekode: string;
-                                fritekst: string | null;
-                                vejkode: number;
-                                kommune: {
-                                    kommuneKode: number;
-                                    kommuneNavn: string;
-                                    periode: {
-                                        gyldigFra: string;
-                                        gyldigTil: string | null;
-                                    };
-                                    sidstOpdateret: string;
-                                };
-                                husnummerFra: number;
-                                adresseId: string;
-                                sidstValideret: string;
-                                husnummerTil: number | null;
-                                bogstavFra: string | null;
-                                bogstavTil: string | null;
-                                etage: string | null;
-                                sidedoer: string | null;
-                                conavn: string | null;
-                                postboks: string | null;
-                                vejnavn: string;
-                                bynavn: string | null;
-                                postnummer: number;
-                                postdistrikt: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            }>;
-                            postadresse: Array<{
-                                landekode: string;
-                                fritekst: string | null;
-                                vejkode: number;
-                                kommune: {
-                                    kommuneKode: number;
-                                    kommuneNavn: string;
-                                    periode: {
-                                        gyldigFra: string;
-                                        gyldigTil: string | null;
-                                    };
-                                    sidstOpdateret: string;
-                                };
-                                husnummerFra: number;
-                                adresseId: string;
-                                sidstValideret: string;
-                                husnummerTil: number | null;
-                                bogstavFra: string | null;
-                                bogstavTil: string | null;
-                                etage: string | null;
-                                sidedoer: string | null;
-                                conavn: string | null;
-                                postboks: string | null;
-                                vejnavn: string;
-                                bynavn: string | null;
-                                postnummer: number;
-                                postdistrikt: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            }>;
-                        };
-                        kontorsteder: [];
-                        organisationer: Array<{
-                            enhedsNummerOrganisation: number;
-                            hovedtype: string;
-                            organisationsNavn: Array<{
-                                navn: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            }>;
-                            attributter: Array<{
-                                sekvensnr: number;
-                                type: string;
-                                vaerditype: string;
-                                vaerdier: Array<{
-                                    vaerdi: string;
-                                    periode: {
-                                        gyldigFra: string;
-                                        gyldigTil: string | null;
-                                    };
-                                    sidstOpdateret: string;
-                                }>;
-                            }>;
-                            medlemsData: Array<{
-                                attributter: Array<{
-                                    sekvensnr: number;
-                                    type: string;
-                                    vaerditype: string;
-                                    vaerdier: Array<{
-                                        vaerdi: string;
-                                        periode: {
-                                            gyldigFra: string;
-                                            gyldigTil: string | null;
-                                        };
-                                        sidstOpdateret: string;
-                                    }>;
-                                }>;
-                            }>;
-                        }>;
-                    }>;
-                    fusioner: Array<{
-                        enhedsNummerOrganisation: number;
-                        organisationsNavn: Array<{
-                            navn: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        }>;
-                        indgaaende: Array<{
-                            sekvensnr: number;
-                            type: string;
-                            vaerditype: string;
-                            vaerdier: Array<{
-                                vaerdi: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            }>;
-                        }>;
-                        udgaaende: Array<{
-                            sekvensnr: number;
-                            type: string;
-                            vaerditype: string;
-                            vaerdier: Array<{
-                                vaerdi: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            }>;
-                        }>;
-                    }>;
-                    spaltninger: [];
-                    virksomhedMetadata: {
-                        nyesteNavn: {
-                            navn: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteBinavne: Array<string>;
-                        nyesteVirksomhedsform: {
-                            virksomhedsformkode: number;
-                            kortBeskrivelse: string;
-                            langBeskrivelse: string;
-                            ansvarligDataleverandoer: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteBeliggenhedsadresse: {
-                            landekode: string;
-                            fritekst: string | null;
-                            vejkode: number;
-                            kommune: {
-                                kommuneKode: number;
-                                kommuneNavn: string;
-                                periode: {
-                                    gyldigFra: string;
-                                    gyldigTil: string | null;
-                                };
-                                sidstOpdateret: string;
-                            };
-                            husnummerFra: number;
-                            adresseId: string;
-                            sidstValideret: string;
-                            husnummerTil: number | null;
-                            bogstavFra: string | null;
-                            bogstavTil: string | null;
-                            etage: string | null;
-                            sidedoer: string | null;
-                            conavn: string | null;
-                            postboks: string | null;
-                            vejnavn: string;
-                            bynavn: string | null;
-                            postnummer: number;
-                            postdistrikt: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteHovedbranche: {
-                            branchekode: string;
-                            branchetekst: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteBibranche1: {
-                            branchekode: string;
-                            branchetekst: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteBibranche2: {
-                            branchekode: string;
-                            branchetekst: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteBibranche3: {
-                            branchekode: string;
-                            branchetekst: string;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        };
-                        nyesteStatus: string | null;
-                        nyesteKontaktoplysninger: Array<{
-                            kontaktoplysning: string | null;
-                            hemmelig: boolean;
-                            periode: {
-                                gyldigFra: string;
-                                gyldigTil: string | null;
-                            };
-                            sidstOpdateret: string;
-                        }>;
-                        antalPenheder: number;
-                        nyesteAarsbeskaeftigelse: {
-                            aar: number;
-                            antalInklusivEjere: number | null;
-                            antalAarsvaerk: number | null;
-                            antalAnsatte: number | null;
-                            sidstOpdateret: string;
-                            intervalKodeAntalInklusivEjere: string | null;
-                            intervalKodeAntalAarsvaerk: string | null;
-                            intervalKodeAntalAnsatte: string | null;
-                        };
-                        nyesteKvartalsbeskaeftigelse: {
-                            aar: number;
-                            kvartal: number;
-                            antalAarsvaerk: number | null;
-                            antalAnsatte: number | null;
-                            sidstOpdateret: string;
-                            intervalKodeAntalAarsvaerk: string | null;
-                            intervalKodeAntalAnsatte: string | null;
-                        };
-                        nyesteMaanedsbeskaeftigelse: {
-                            aar: number;
-                            maaned: number;
-                            antalAarsvaerk: number | null;
-                            antalAnsatte: number | null;
-                            sidstOpdateret: string;
-                            intervalKodeAntalAarsvaerk: string | null;
-                            intervalKodeAntalAnsatte: string | null;
-                        };
-                        nyesteErstMaanedsbeskaeftigelse: {
-                            aar: number;
-                            maaned: number;
-                            antalAarsvaerk: number | null;
-                            antalAnsatte: number | null;
-                            sidstOpdateret: string;
-                            intervalKodeAntalAarsvaerk: string | null;
-                            intervalKodeAntalAnsatte: string | null;
-                        };
-                        sammensatStatus: string;
-                        stiftelsesDato: string;
-                        virkningsDato: string;
-                    };
-                    samtId: number;
-                    fejlRegistreret: boolean;
-                    dataAdgang: 0;
-                    enhedsNummer: number;
-                    enhedstype: string;
-                    sidstIndlaest: string;
-                    sidstOpdateret: string;
-                    fejlVedIndlaesning: boolean;
-                    naermesteFremtidigeDato: string | null;
-                    fejlBeskrivelse: null;
-                    virkningsAktoer: string;
-                };
+                Vrvirksomhed: Virksomhed;
             };
         }>;
     };
 }
 
-export interface CorporateForm {
-    code: number | null;
+/** A merger (fusion) or demerger (spaltning), reduced to what the response exposes. */
+export interface CorporateEvent {
+    /** The registry's name for the event, e.g. "Fusion". */
     name: string | null;
-    abbreviation: string | null;
+    /** The date the event took effect (periode.gyldigFra). */
+    date: string | null;
+    /** True when this company was on the receiving end (indgående). */
+    incoming: boolean;
+    /** True when this company was on the giving end (udgående). */
+    outgoing: boolean;
+}
+
+/** The company's current registered address (beliggenhedsadresse). */
+export interface CompanyAddress {
+    street: string | null;
+    houseNumberFrom: number | null;
+    houseNumberTo: number | null;
+    letterFrom: string | null;
+    letterTo: string | null;
+    floor: string | null;
+    sideDoor: string | null;
+    coName: string | null;
+    poBox: string | null;
+    zipCode: number | null;
+    city: string | null;
+    municipality: string | null;
+    countryCode: string | null;
+    /** Free-text address used when the address is not structured (e.g. foreign). */
+    freeText: string | null;
+}
+
+/** Registered capital (KAPITAL + KAPITALVALUTA). */
+export interface Capital {
+    value: number | null;
+    currency: string | null;
 }
 
 export interface Company {
     name: string;
     cvr: number;
     corporateForm: CorporateForm;
-    financialYear: {
-        startDate: string | null;
-        endDate: string | null;
-    };
-    ownershipPercentage: {
-        interval: {
-            from: number | null;
-            to: number | null;
-        };
-        accurate: number | null;
-    };
+    financialYear: FinancialYear;
+    ownershipPercentage: OwnershipPercentage;
+    votingRightsPercentage: OwnershipPercentage;
+    selfOwnershipPercentage?: { from: number | null; to: number | null } | null;
     dateOfIncorporation: string | null;
+    /** Whether the company is listed on a stock exchange (BØRSNOTERET). */
+    listed: boolean;
+    /** The company's stated purpose (FORMÅL). */
+    purpose: string | null;
+    /** Whether the share capital is divided into classes (KAPITALKLASSER). */
+    hasShareClasses: boolean;
+    /** Current company status (virksomhedsstatus), e.g. "NORMAL". */
+    status: string | null;
+    /** Current main industry (hovedbranche), as "code - text". */
+    mainIndustry: string | null;
+    /** Current secondary names (binavne). */
+    secondaryNames: string[];
+    /** Demergers (spaltninger). */
+    demergers: CorporateEvent[];
+    /** Mergers (fusioner). */
+    mergers: CorporateEvent[];
+    /** Current registered address (beliggenhedsadresse). */
+    address: CompanyAddress | null;
+    /** Registered capital with its currency (KAPITAL / KAPITALVALUTA). */
+    capital: Capital;
+    /** First financial period (FØRSTE_REGNSKABSPERIODE_START/_SLUT). */
+    firstFinancialYear: FinancialYear;
+    /** Whether the company is subject to audit — false when audit is opted out (REVISION_FRAVALGT). */
+    audited: boolean;
+    /** The rule for who can sign on behalf of the company (TEGNINGSREGEL). */
+    powerToBind: string | null;
 }
 
-export interface CorporateGroup {
-    name: string;
-    cvr: number;
-    corporateForm: CorporateForm;
-    financialYear: {
-        startDate: string | null;
-        endDate: string | null;
-    };
-    ownershipPercentage: {
-        interval: {
-            from: number | null;
-            to: number | null;
-        };
-        accurate: number | null;
-    };
-    dateOfIncorporation: string | null;
+export interface CorporateGroup extends Company {
     subsidiaries: CorporateGroup[] | null;
 }
 
-export interface CompanyFlattened {
-    name: string;
-    cvr: number;
-    corporateForm: CorporateForm;
-    financialYear: {
-        startDate: string | null;
-        endDate: string | null;
-    };
-    ownershipPercentage: {
-        interval: {
-            from: number | null;
-            to: number | null;
-        };
-        accurate: number | null;
-    };
-    dateOfIncorporation: string | null;
+export interface CompanyFlattened extends Company {
     level: number;
     parent: {
         name: string;

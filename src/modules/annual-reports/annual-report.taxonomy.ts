@@ -62,6 +62,10 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
         "http://archprod.service.eogs.dk/taxonomy/20241001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20241001.xsd",
         "http://archprod.service.eogs.dk/taxonomy/20241001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20241001.xsd",
         "http://archprod.service.eogs.dk/taxonomy/20241001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20241001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20251001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20251001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20251001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20251001.xsd",
     ],
     body: {
         reportingPeriod: {
@@ -74,6 +78,97 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "ReportingPeriodEndDate",
                 namespace: "http://xbrl.dcca.dk/gsd",
                 label: "Regnskabsperiodens slutdato",
+            },
+        },
+        notes: {
+            amortisationOfIntangibleAssets: {
+                name: "AmortisationOfIntangibleAssets",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Afskrivninger af immaterielle aktiver",
+                balance: "credit",
+            },
+            impairmentLossesOfIntangibleAssets: {
+                name: "ImpairmentLossesOfIntangibleAssets",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nedskrivninger af immaterielle anlægsaktiver",
+                balance: "credit",
+            },
+            accumulatedImpairmentLossesAndAmortisationOfIntangibleAssets: {
+                name: "AccumulatedImpairmentLossesAndAmortisationOfIntangibleAssets",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Akkumulerede nedskrivninger og afskrivninger af immaterielle anlægsaktiver",
+                balance: "credit",
+            },
+        },
+        informationOnRelatedEntities: {
+            identificationNumberCvrOfRelatedEntity: {
+                name: "IdentificationNumberCvrOfRelatedEntity",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts CVR-nr.",
+            },
+            legalEntityIdentifierOfRelatedEntity: {
+                name: "LegalEntityIdentifierOfRelatedEntity",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts LEI-kode",
+            },
+            identificationNumberPnrOfRelatedEntity: {
+                name: "IdentificationNumberPnrOfRelatedEntity",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts P-nr.",
+            },
+            relatedEntityName: {
+                name: "RelatedEntityName",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts navn",
+            },
+            relatedEntityRegisteredOffice: {
+                name: "RelatedEntityRegisteredOffice",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts hjemsted/bopæl",
+            },
+            relatedEntityLegalForm: {
+                name: "RelatedEntityLegalForm",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Nærtstående parts retsform",
+            },
+            shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity: {
+                name: "ShareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Ejerandel i tilknyttet virksomhed",
+            },
+        },
+        consolidatedFinancialStatements: {
+            subsidiaries: {
+                identificationNumberCvrOfRelatedEntityConsolidatedFinancialStatements: {
+                    name: "IdentificationNumberCvrOfRelatedEntityConsolidatedFinancialStatements",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Nærtstående parts CVR-nr. [koncernregnskab]",
+                },
+                legalEntityIdentifierOfRelatedEntityConsolidatedFinancialStatements: {
+                    name: "LegalEntityIdentifierOfRelatedEntityConsolidatedFinancialStatements",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Nærtstående parts LEI-kode [koncernregnskab]",
+                },
+                identificationNumberPnrOfRelatedEntityConsolidatedFinancialStatements: {
+                    name: "IdentificationNumberPnrOfRelatedEntityConsolidatedFinancialStatements",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Nærtstående parts P-nr. [koncernregnskab]",
+                },
+                relatedEntityNameConsolidatedFinancialStatements: {
+                    name: "RelatedEntityNameConsolidatedFinancialStatements",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Tilknyttet virksomheds navn [koncernregnskab]",
+                },
+                relatedEntityRegisteredOfficeConsolidatedFinancialStatements: {
+                    name: "RelatedEntityRegisteredOfficeConsolidatedFinancialStatements",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Tilknyttet virksomheds hjemsted [koncernregnskab]",
+                },
+                placeAtWhichConsolidatedFinancialStatementsMayBeObtainedIfParentIsNondanishEntity: {
+                    name: "PlaceAtWhichConsolidatedFinancialStatementsMayBeObtainedIfParentIsNondanishEntity",
+                    namespace: "http://xbrl.dcca.dk/fsa",
+                    label: "Oplysning om hvor de pågældende udenlandske modervirksomheders koncernregnskaber kan rekvireres",
+                },
             },
         },
         balanceSheet: {
@@ -102,14 +197,13 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 balance: "debit",
             },
             concessionsOriginatingFromDevelopmentProjects: {
-                // unique name
-                name: "	ConcessionsOriginatingFromDevelopmentProjects",
+                name: "ConcessionsOriginatingFromDevelopmentProjects",
                 namespace: "http://xbrl.dcca.dk/fsa",
-                label: "	Koncessioner, der stammer fra udviklingsprojekter",
+                label: "Koncessioner, der stammer fra udviklingsprojekter",
                 balance: "debit",
             },
             patentsOriginatingFromDevelopmentProjects: {
-                name: "	PatentsOriginatingFromDevelopmentProjects",
+                name: "PatentsOriginatingFromDevelopmentProjects",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Patenter, der stammer fra udviklingsprojekter",
                 balance: "debit",
@@ -158,7 +252,7 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 balance: "debit",
             },
             acquiredOtherSimilarRights: {
-                name: "	AcquiredOtherSimilarRights",
+                name: "AcquiredOtherSimilarRights",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Erhvervede lignende rettigheder",
                 balance: "debit",
@@ -341,6 +435,12 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "LongtermReceivablesFromJointVentures",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Langfristede tilgodehavender hos joint ventures",
+                balance: "debit",
+            },
+            longtermReceivablesFromOwnersOtherCompanies: {
+                name: "LongtermReceivablesFromOwnersOtherCompanies",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Langfristede tilgodehavender hos ejers andre virksomheder",
                 balance: "debit",
             },
             otherLongtermInvestments: {
@@ -582,6 +682,12 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "DerivativeFinancialInstrumentsShorttermAssets",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Afledte finansielle instrumenter [kortfristede aktiver]",
+                balance: "debit",
+            },
+            derivativeFinancialInstrumentsAssets: {
+                name: "DerivativeFinancialInstrumentsAssets",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Afledte finansielle instrumenter",
                 balance: "debit",
             },
             shorttermInvestments: {
@@ -1133,6 +1239,18 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 label: "Gæld til joint ventures (langfristet)",
                 balance: "credit",
             },
+            longtermLPayablesToOwnersOtherCompanies: {
+                name: "LongtermPayablesToOwnersOtherCompanies",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Gæld til ejers andre virksomheder (langfristede)",
+                balance: "credit",
+            },
+            shorttermPayablesToOwnersOtherCompanies: {
+                name: "ShorttermPayablesToOwnersOtherCompanies",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Kortfristede gældsforpligtelser til ejers andre virksomheder",
+                balance: "credit",
+            },
             taxPayables: {
                 // unique name
                 name: "TaxPayables",
@@ -1652,7 +1770,7 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "EmployeeExpensesTransferredToAssets",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Personaleomkostninger overført til aktiver",
-                balance: "debit",
+                balance: "credit",
             },
             otherEmployeeExpense: {
                 name: "OtherEmployeeExpense",
@@ -1714,7 +1832,7 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "ProfitLossFromOrdinaryOperatingActivitiesBeforeGainsLossesFromFairValueAdjustments",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Resultat af ordinær drift før dagsværdireguleringer",
-                balance: "debit",
+                balance: "credit",
             },
             gainsLossesFromCurrentValueAdjustmentsOfInvestmentAssets: {
                 name: "GainsLossesFromCurrentValueAdjustmentsOfInvestmentAssets",

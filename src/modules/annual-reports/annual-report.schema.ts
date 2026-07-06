@@ -16,7 +16,7 @@ export const paramSchema = z.object({
             },
         })
         .openapi({
-            description: "CVR-nummeret for det selskab, hvis koncernstruktur skal hentes.",
+            description: "CVR-nummeret for det selskab, hvis årsrapporter skal hentes.",
             example: "12345678",
             param: {
                 in: "path",
@@ -351,6 +351,64 @@ const incomeStatementSchema = z.object({
     profitLossAfterAttributableToMinorityInterest: accountSchema,
 });
 
+const relatedEntitySchema = z.object({
+    cvrNumber: z.string().nullable().openapi({
+        description: "Den nærtstående virksomheds CVR-nummer",
+        example: "12345678",
+    }),
+    legalEntityIdentifier: z.string().nullable().openapi({
+        description: "Den nærtstående virksomheds LEI-kode",
+        example: "5299000J2N45DDNE4Y28",
+    }),
+    pNumber: z.string().nullable().openapi({
+        description: "Den nærtstående virksomheds P-nummer",
+        example: "1012345678",
+    }),
+    name: z.string().nullable().openapi({
+        description: "Navnet på den nærtstående virksomhed",
+        example: "Gamma 26 ApS",
+    }),
+    registeredOffice: z.string().nullable().openapi({
+        description: "Virksomhedens hjemsted",
+        example: "Haderslev",
+    }),
+    legalForm: z.string().nullable().openapi({
+        description: "Virksomhedens selskabsform",
+        example: "ApS",
+    }),
+    ownershipPercentage: z.number().nullable().openapi({
+        description: "Ejerandel i tilknyttet virksomhed (i procent)",
+        example: 100,
+    }),
+});
+
+const consolidatedFinancialStatementsSchema = z.object({
+    cvrNumber: z.string().nullable().openapi({
+        description: "Den tilknyttede virksomheds CVR-nummer [koncernregnskab]",
+        example: "12345678",
+    }),
+    legalEntityIdentifier: z.string().nullable().openapi({
+        description: "Den tilknyttede virksomheds LEI-kode [koncernregnskab]",
+        example: "5299000J2N45DDNE4Y28",
+    }),
+    pNumber: z.string().nullable().openapi({
+        description: "Den tilknyttede virksomheds P-nummer [koncernregnskab]",
+        example: "1012345678",
+    }),
+    name: z.string().nullable().openapi({
+        description: "Den tilknyttede virksomheds navn [koncernregnskab]",
+        example: "Datterselskab A/S",
+    }),
+    registeredOffice: z.string().nullable().openapi({
+        description: "Den tilknyttede virksomheds hjemsted [koncernregnskab]",
+        example: "København",
+    }),
+    placeWhereConsolidatedFinancialStatementsMayBeObtained: z.string().nullable().openapi({
+        description: "Oplysning om hvor de pågældende udenlandske modervirksomheders koncernregnskaber kan rekvireres",
+        example: "Stockholm, Sverige",
+    }),
+});
+
 const annualReportSchema = z.object({
     reportingPeriod: z.object({
         reportingPeriodStartDate: z.string().openapi({
@@ -362,33 +420,113 @@ const annualReportSchema = z.object({
             example: "31-12-2022",
         }),
     }),
-    // currencies: z
-    //     .array(
-    //         z.object({
-    //             code: z.string().openapi({
-    //                 description: "Valutakoden for den valuta, der anvendes i årsrapporten.",
-    //                 example: "DKK",
-    //             }),
-    //             exchangeRate: z.number().openapi({
-    //                 description: "Valutakursen for den pågældende valuta i forhold til DKK.",
-    //                 example: 1.0,
-    //             }),
-    //         })
-    //     )
-    //     .openapi({
-    //         description:
-    //             "En liste over de valutaer, der anvendes i årsrapporten, inklusive deres valutakoder og valutakurser.",
-    //     }),
-    // consolidated: z.boolean().openapi({
-    //     description: "Angiver om årsrapporten indeholder et koncernregnskab.",
-    //     example: true,
-    // }),
-    // propertiesAtFairValue: z.boolean().openapi({
-    //     description: "Angiver om ejendomme er vurderet til dagsværdi i årsrapporten.",
-    //     example: false,
-    // }),
-    incomeStatement: incomeStatementSchema,
-    balanceSheet: balanceSheetSchema,
+    unit: z.string().openapi({
+        description: "Den valutaenhed, som alle beløb i årsrapporten er angivet i.",
+        example: "DKK",
+    }),
+    notes: z.record(z.string(), accountSchema).openapi({
+        description: "En samling af noter, hvor hver note har en nøgle og en tilknyttet konto.",
+        example: {
+            amortisationOfIntangibleAssets: {
+                value: 1000000,
+                unit: "DKK",
+                label: "Afskrivninger af immaterielle aktiver",
+            },
+            accumulatedImpairmentLossesAndAmortisationOfIntangibleAssets: {
+                value: 500000,
+                unit: "DKK",
+                label: "Akkumulerede nedskrivninger og afskrivninger af immaterielle anlægsaktiver",
+            },
+        },
+    }),
+    relatedEntities: z.array(relatedEntitySchema).openapi({
+        description: "En liste over relaterede enheder, der har en betydelig indflydelse på virksomheden.",
+        example: [
+            {
+                cvrNumber: "12345678",
+                legalEntityIdentifier: null,
+                pNumber: null,
+                name: "Datterselskab A/S",
+                registeredOffice: "København",
+                legalForm: "Aktieselskab",
+                ownershipPercentage: 100,
+            },
+        ],
+    }),
+    consolidatedFinancialStatements: z.array(consolidatedFinancialStatementsSchema).openapi({
+        description: "En liste over tilknyttede virksomheder, der indgår i koncernregnskabet.",
+        example: [
+            {
+                cvrNumber: "12345678",
+                legalEntityIdentifier: null,
+                pNumber: null,
+                name: "Datterselskab A/S",
+                registeredOffice: "København",
+                placeWhereConsolidatedFinancialStatementsMayBeObtained: null,
+            },
+        ],
+    }),
+    warnings: z
+        .array(
+            z.object({
+                code: z.literal("SCALING_REPAIRED").openapi({ example: "SCALING_REPAIRED" }),
+                message: z.string().openapi({
+                    description: "Menneskelæsbar (dansk) beskrivelse af justeringen.",
+                }),
+                repairedFields: z.array(
+                    z.object({
+                        statement: z.enum(["balanceSheet", "incomeStatement", "notes"]),
+                        field: z.string().openapi({ example: "assets" }),
+                        originalValue: z.number().openapi({ example: 247483 }),
+                        repairedValue: z.number().openapi({ example: 247483000 }),
+                        factor: z.number().openapi({ example: 1000 }),
+                    }),
+                ),
+            }),
+        )
+        .openapi({
+            description:
+                "Datakvalitets-advarsler for denne årsrapport. 'SCALING_REPAIRED' betyder, at et eller flere " +
+                "beløb manglede de nuller, som deres decimals-angivelse tilsiger, og er ganget op — kontrollér tallene.",
+            example: [],
+        }),
+    incomeStatement: incomeStatementSchema.partial(),
+    balancesheet: balanceSheetSchema.partial(),
+});
+
+// Codes must stay in sync with shared/api-error.ts ErrorCode and the VBA ApiErrorCode list.
+const errorCodeSchema = z.enum([
+    "UPSTREAM_UNAVAILABLE",
+    "UPSTREAM_ERROR",
+    "UPSTREAM_BAD_RESPONSE",
+    "NOT_FOUND",
+    "INVALID_CVR",
+    "UNKNOWN_TAXONOMY",
+    "MALFORMED_XML",
+    "MISSING_NAMESPACE",
+    "MALFORMED_UNIT",
+    "MISSING_PERIOD",
+    "NO_DATA",
+    "INTERNAL",
+]);
+
+const skipSchema = z.object({
+    reportingPeriodEndDate: z.string().nullable().openapi({
+        description: "Regnskabsperiodens slutdato for den årsrapport, der ikke kunne læses.",
+        example: "2023-12-31",
+    }),
+    documentUrl: z.string().nullable().openapi({
+        description: "URL til det XBRL-dokument, der ikke kunne læses.",
+        example: "https://distribution.virk.dk/...",
+    }),
+    errorCode: errorCodeSchema.openapi({
+        description: "Maskinlæsbar årsag til, at årsrapporten blev sprunget over.",
+        example: "UNKNOWN_TAXONOMY",
+    }),
+    message: z.string().openapi({
+        description: "Menneskelæsbar (dansk) årsag.",
+        example: "Årsrapporten anvender en ukendt taksonomi og kunne ikke læses.",
+    }),
 });
 
 export const responseSchema = z.object({
@@ -404,22 +542,83 @@ export const responseSchema = z.object({
         description: "En liste over årsrapporter for det angivne CVR-nummer.",
         example: [
             {
-                cvrNummer: 32345794,
                 reportingPeriod: {
-                    startDate: "2022-01-01",
-                    endDate: "2022-12-31",
+                    reportingPeriodStartDate: "2022-01-01",
+                    reportingPeriodEndDate: "2022-12-31",
                 },
-                currencies: [
-                    {
-                        code: "DKK",
-                        exchangeRate: 1.0,
-                    },
-                ],
-                consolidated: true,
-                propertiesAtFairValue: false,
+                unit: "DKK",
+                notes: {},
+                relatedEntities: [],
+                consolidatedFinancialStatements: [],
+                warnings: [],
                 incomeStatement: {},
-                balanceSheet: {},
+                balancesheet: {},
             },
         ],
+    }),
+    skipped: z.array(skipSchema).openapi({
+        description: "Dokumenter der blev hentet, men ikke kunne læses (med årsag).",
+        example: [],
+    }),
+});
+
+export const batchBodySchema = z.object({
+    cvrNumbers: z
+        .array(
+            z.coerce.string().length(8, {
+                error: (issue) => ({
+                    message: `Hvert CVR-nummer skal have præcis 8 cifre. Du angav ${issue.input}`,
+                }),
+            }),
+        )
+        .min(1, { error: () => ({ message: "Mindst ét CVR-nummer skal angives." }) })
+        .max(500, { error: () => ({ message: "Maksimalt 500 CVR-numre kan hentes ad gangen." }) })
+        .openapi({
+            description: "En liste over CVR-numre, hvis årsrapporter skal hentes.",
+            example: ["12345678", "23456789"],
+        }),
+});
+
+const batchResultSchema = z.object({
+    cvrNumber: z.string().openapi({
+        description: "CVR-nummeret som dette resultat vedrører.",
+        example: "12345678",
+    }),
+    status: z.enum(["success", "failed", "error"]).openapi({
+        description: "Status for netop dette CVR-nummer.",
+        example: "success",
+    }),
+    total: z.number().int().openapi({
+        description: "Antal årsrapporter fundet for dette CVR-nummer.",
+        example: 10,
+    }),
+    results: z.array(annualReportSchema).openapi({
+        description: "Årsrapporterne for dette CVR-nummer.",
+    }),
+    skipped: z.array(skipSchema).openapi({
+        description: "Dokumenter for dette CVR-nummer, der ikke kunne læses (med årsag).",
+        example: [],
+    }),
+    errorCode: errorCodeSchema.optional().openapi({
+        description: "Maskinlæsbar fejlkode, hvis hele selskabet fejlede.",
+        example: "UPSTREAM_UNAVAILABLE",
+    }),
+    message: z.string().optional().openapi({
+        description: "Fejlbesked, hvis status er 'error' eller 'failed'.",
+        example: "Kunne ikke hente data fra CVR-registret.",
+    }),
+});
+
+export const batchResponseSchema = z.object({
+    total: z.number().int().openapi({
+        description: "Antal CVR-numre der blev behandlet.",
+        example: 2,
+    }),
+    status: z.enum(["success", "partial", "error"]).openapi({
+        description: "Samlet status. 'success' = alle lykkedes, 'partial' = nogle fejlede, 'error' = alle fejlede.",
+        example: "success",
+    }),
+    results: z.array(batchResultSchema).openapi({
+        description: "Et resultat per CVR-nummer, i samme rækkefølge som forespørgslen.",
     }),
 });

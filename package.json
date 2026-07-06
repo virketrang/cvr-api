@@ -5,7 +5,7 @@
         "dev": "tsx watch src/index.ts --env-file=.env",
         "build": "tsc && tsc-alias",
         "start": "node dist/index.js",
-        "deploy": "gcloud run deploy cvr-api --project=virketrang --source . --allow-unauthenticated --base-image nodejs24"
+        "deploy": "gcloud run deploy bech-bruun-api --project=bech-bruun-api --source . --allow-unauthenticated --base-image nodejs24"
     },
     "dependencies": {
         "@hono/node-server": "^1.18.1",
@@ -13,12 +13,16 @@
         "@scalar/hono-api-reference": "^0.9.13",
         "@xmldom/xmldom": "^0.9.8",
         "chalk": "^5.5.0",
+        "cheerio": "^1.1.2",
         "dotenv": "^17.2.1",
+        "exceljs": "^4.4.0",
         "hono": "^4.9.0",
         "zod": "^4.0.16"
     },
     "devDependencies": {
+        "@types/cheerio": "^0.22.35",
         "@types/node": "^20.11.17",
+        "eslint": "^10.0.1",
         "tsc-alias": "^1.8.16",
         "tsx": "^4.7.1",
         "typescript": "^5.8.3"

@@ -1,54 +1,209 @@
 import type {
+    Attribute,
     Company,
+    CompanyAddress,
     CompanyFlattened,
+    CorporateEvent,
+    CorporateEventSource,
     CorporateGroup,
     CorporateGroupFlattened,
     DanishBusinessRegistrationCompanyAPIResponse,
+    Virksomhed,
 } from "./corporate-group.types.js";
 import environment from "../../environment.js";
+import { AppError, ErrorCode } from "../../utils/api-error.js";
+import { basicAuthHeader, fetchUpstreamJson } from "../../utils/http.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/cvr-permanent/virksomhed/_search";
 
 export default abstract class CorporateGroupService {
-    private static async queryDanishBusinessRegistrationAPI(
-        query: object
-    ): Promise<DanishBusinessRegistrationCompanyAPIResponse> {
-        const response = await fetch(CVR_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                Authorization: `Basic ${Buffer.from(
-                    `${environment.CVR_API_USERNAME}:${environment.CVR_API_PASSWORD}`
-                ).toString("base64")}`,
-            },
-            body: JSON.stringify(query),
-        });
+    /** Safely turns a date-ish string into an ISO string, or null if unparseable. */
+    private static safeIsoDate(value: string | null | undefined): string | null {
+        if (!value) return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
 
-        if (!response.ok) {
-            throw new Error(`Failed to fetch data from CVR API: ${response.statusText}`);
+    private static convertDecimalToRange(decimal: number | null): { from: number | null; to: number | null } {
+        switch (decimal) {
+            case 0:
+                return { from: 0, to: 0.0499 };
+            case 0.05:
+                return { from: 0.05, to: 0.0999 };
+            case 0.1:
+                return { from: 0.1, to: 0.1499 };
+            case 0.15:
+                return { from: 0.15, to: 0.1999 };
+            case 0.2:
+                return { from: 0.2, to: 0.2499 };
+            case 0.25:
+                return { from: 0.25, to: 0.3332 };
+            case 0.3333:
+                return { from: 0.3333, to: 0.4999 };
+            case 0.5:
+                return { from: 0.5, to: 0.6666 };
+            case 0.6667:
+                return { from: 0.6667, to: 0.8999 };
+            case 0.9:
+                return { from: 0.9, to: 0.9999 };
+            case 1:
+                return { from: 1, to: 1 };
+            default:
+                return { from: null, to: null };
         }
+    }
 
-        const data: DanishBusinessRegistrationCompanyAPIResponse = await response.json();
+    /** The currently valid (periode.gyldigTil === null) value of a company attribute, or null. */
+    private static currentAttributeValue(attributter: Attribute[], type: string): string | null {
+        return (
+            attributter
+                .find((attr) => attr.type === type)
+                ?.vaerdier.find((value) => value.periode?.gyldigTil === null)?.vaerdi ?? null
+        );
+    }
 
-        return data;
+    /** Maps a fusion/spaltning registry entry to the reduced shape the response exposes. */
+    private static convertCorporateEvent(event: CorporateEventSource): CorporateEvent {
+        const name = event.organisationsNavn[0]?.navn ?? null;
+        const date =
+            event.indgaaende
+                .concat(event.udgaaende)
+                .flatMap((attr) => attr.vaerdier)
+                .map((value) => value.periode?.gyldigFra)
+                .filter((from): from is string => Boolean(from))
+                .sort()[0] ?? null;
+
+        return {
+            name,
+            date,
+            incoming: event.indgaaende.length > 0,
+            outgoing: event.udgaaende.length > 0,
+        };
+    }
+
+    /** The company's current registered address, or null when none is registered. */
+    private static extractAddress(virksomhed: Virksomhed): CompanyAddress | null {
+        const address =
+            virksomhed.beliggenhedsadresse.find((a) => a.periode.gyldigTil === null) ??
+            virksomhed.virksomhedMetadata.nyesteBeliggenhedsadresse ??
+            null;
+
+        if (!address) return null;
+
+        return {
+            street: address.vejnavn ?? null,
+            houseNumberFrom: address.husnummerFra ?? null,
+            houseNumberTo: address.husnummerTil ?? null,
+            letterFrom: address.bogstavFra ?? null,
+            letterTo: address.bogstavTil ?? null,
+            floor: address.etage ?? null,
+            sideDoor: address.sidedoer ?? null,
+            coName: address.conavn ?? null,
+            poBox: address.postboks ?? null,
+            zipCode: address.postnummer ?? null,
+            city: address.postdistrikt ?? null,
+            municipality: address.kommune?.kommuneNavn ?? null,
+            countryCode: address.landekode ?? null,
+            freeText: address.fritekst ?? null,
+        };
+    }
+
+    /**
+     * Extracts the company master data shared by the root company and every
+     * subsidiary from the registry's Vrvirksomhed document, so both are computed
+     * by the same rules.
+     */
+    private static extractCompanyDetails(
+        virksomhed: Virksomhed,
+    ): Pick<
+        Company,
+        | "listed"
+        | "purpose"
+        | "hasShareClasses"
+        | "status"
+        | "mainIndustry"
+        | "secondaryNames"
+        | "demergers"
+        | "mergers"
+        | "address"
+        | "capital"
+        | "firstFinancialYear"
+        | "audited"
+        | "powerToBind"
+    > {
+        const attributter = virksomhed.attributter ?? [];
+
+        const capitalValue = CorporateGroupService.currentAttributeValue(attributter, "KAPITAL");
+
+        const mainIndustry =
+            (virksomhed.hovedbranche ?? []).find((branch) => branch.periode.gyldigTil === null) ??
+            virksomhed.virksomhedMetadata.nyesteHovedbranche ??
+            null;
+
+        const status =
+            (virksomhed.virksomhedsstatus ?? []).find((s) => s.periode.gyldigTil === null)?.status ??
+            virksomhed.virksomhedMetadata.sammensatStatus ??
+            null;
+
+        const secondaryNames = (virksomhed.binavne ?? [])
+            .filter((name) => name.periode.gyldigTil === null)
+            .map((name) => name.navn);
+
+        return {
+            listed: CorporateGroupService.currentAttributeValue(attributter, "BØRSNOTERET") === "true",
+            purpose: CorporateGroupService.currentAttributeValue(attributter, "FORMÅL"),
+            hasShareClasses: CorporateGroupService.currentAttributeValue(attributter, "KAPITALKLASSER") === "true",
+            status,
+            mainIndustry: mainIndustry ? `${mainIndustry.branchekode} - ${mainIndustry.branchetekst}` : null,
+            secondaryNames,
+            demergers: (virksomhed.spaltninger ?? []).map(CorporateGroupService.convertCorporateEvent),
+            mergers: (virksomhed.fusioner ?? []).map(CorporateGroupService.convertCorporateEvent),
+            address: CorporateGroupService.extractAddress(virksomhed),
+            capital: {
+                value: capitalValue !== null ? parseFloat(capitalValue) : null,
+                currency: CorporateGroupService.currentAttributeValue(attributter, "KAPITALVALUTA"),
+            },
+            firstFinancialYear: {
+                startDate: CorporateGroupService.currentAttributeValue(attributter, "FØRSTE_REGNSKABSPERIODE_START"),
+                endDate: CorporateGroupService.currentAttributeValue(attributter, "FØRSTE_REGNSKABSPERIODE_SLUT"),
+            },
+            // Audit applies unless it has been explicitly opted out (REVISION_FRAVALGT = true).
+            audited: CorporateGroupService.currentAttributeValue(attributter, "REVISION_FRAVALGT") !== "true",
+            powerToBind: CorporateGroupService.currentAttributeValue(attributter, "TEGNINGSREGEL"),
+        };
+    }
+
+    private static async queryDanishBusinessRegistrationAPI(
+        query: object,
+    ): Promise<DanishBusinessRegistrationCompanyAPIResponse> {
+        return fetchUpstreamJson<DanishBusinessRegistrationCompanyAPIResponse>(
+            "Det offentlige register",
+            CVR_API_URL,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: basicAuthHeader(environment.CVR_API_USERNAME, environment.CVR_API_PASSWORD),
+                },
+                body: JSON.stringify(query),
+            },
+        );
     }
 
     private static async getCompanyFromTheDanishBusinessRegistrationAPI(
-        cvrNumber: number
+        cvrNumber: number,
     ): Promise<DanishBusinessRegistrationCompanyAPIResponse | null> {
-        const data = await CorporateGroupService.queryDanishBusinessRegistrationAPI({
+        return await CorporateGroupService.queryDanishBusinessRegistrationAPI({
             query: {
                 bool: {
                     must: [{ term: { "Vrvirksomhed.cvrNummer": cvrNumber } }],
                 },
             },
         });
-
-        return data;
     }
 
     public static async getCompanySubsidiariesFromDanishBusinessRegistrationAPI(
-        cvrNumber: number
+        cvrNumber: number,
     ): Promise<Array<Company>> {
         const companiesResponse = await CorporateGroupService.queryDanishBusinessRegistrationAPI({
             query: {
@@ -148,7 +303,10 @@ export default abstract class CorporateGroupService {
             const cvr = subsidiary.cvrNummer;
 
             if (!name || !cvr) {
-                throw new Error("Company name or CVR number is missing in the response.");
+                throw new AppError(
+                    ErrorCode.UPSTREAM_BAD_RESPONSE,
+                    "Et selskab i koncernstrukturen mangler navn eller CVR-nummer i registerets svar.",
+                );
             }
 
             const coorporateForm = subsidiary.virksomhedsform.find((f) => f.periode.gyldigTil === null) ??
@@ -160,36 +318,53 @@ export default abstract class CorporateGroupService {
 
             const dateOfIncorporation =
                 subsidiary.livsforloeb.sort(
-                    (a, b) => new Date(a.periode.gyldigFra).getTime() - new Date(b.periode.gyldigFra).getTime()
+                    (a, b) => new Date(a.periode.gyldigFra).getTime() - new Date(b.periode.gyldigFra).getTime(),
                 )[0]?.periode?.gyldigFra ??
                 subsidiary.virksomhedMetadata.stiftelsesDato ??
                 null;
 
-            const financialYearStartDate =
-                subsidiary.attributter
-                    .find((attr) => attr.type === "REGNSKABSÅR_SLUT")
-                    ?.vaerdier.find((value) => value.periode?.gyldigTil === null)?.vaerdi ?? null;
-            const financialYearEndDate =
-                subsidiary.attributter
-                    .find((attr) => attr.type === "REGNSKABSÅR_START")
-                    ?.vaerdier.find((value) => value.periode?.gyldigTil === null)?.vaerdi ?? null;
+            const financialYearStartDate = CorporateGroupService.currentAttributeValue(
+                subsidiary.attributter,
+                "REGNSKABSÅR_START",
+            );
+            const financialYearEndDate = CorporateGroupService.currentAttributeValue(
+                subsidiary.attributter,
+                "REGNSKABSÅR_SLUT",
+            );
 
             const parent = subsidiary.deltagerRelation?.find(
-                (relation) => relation.deltager.forretningsnoegle === cvrNumber
+                (relation) => relation.deltager.forretningsnoegle === cvrNumber,
             );
 
             const ownershipOrganisation = parent?.organisationer?.find(
                 (org) =>
-                    org.hovedtype === "REGISTER" && org.organisationsNavn.some((name) => name.navn === "EJERREGISTER")
+                    org.hovedtype === "REGISTER" && org.organisationsNavn.some((name) => name.navn === "EJERREGISTER"),
             );
 
             const ownershipAttribute = ownershipOrganisation?.medlemsData?.find((data) =>
-                data.attributter.some((attr) => attr.type === "EJERANDEL_PROCENT")
+                data.attributter.some((attr) => attr.type === "EJERANDEL_PROCENT"),
             );
 
             const ownershipRegister = ownershipAttribute?.attributter.find((attr) => attr.type === "EJERANDEL_PROCENT");
 
             const ownershipPercentage = ownershipRegister?.vaerdier.find((value) => value.periode?.gyldigTil === null);
+
+            const votingRightsAttribute = ownershipOrganisation?.medlemsData?.find((data) =>
+                data.attributter.some((attr) => attr.type === "EJERANDEL_STEMMERET_PROCENT"),
+            );
+
+            const votingRightsRegister = votingRightsAttribute?.attributter.find(
+                (attr) => attr.type === "EJERANDEL_STEMMERET_PROCENT",
+            );
+
+            const votingRightsPercentage = votingRightsRegister?.vaerdier.find(
+                (value) => value.periode?.gyldigTil === null,
+            );
+
+            const ownershipDecimal = ownershipPercentage?.vaerdi ? parseFloat(ownershipPercentage.vaerdi) : null;
+            const votingRightsDecimal = votingRightsPercentage?.vaerdi
+                ? parseFloat(votingRightsPercentage.vaerdi)
+                : null;
 
             return {
                 name,
@@ -204,13 +379,15 @@ export default abstract class CorporateGroupService {
                     endDate: financialYearEndDate ?? null,
                 },
                 ownershipPercentage: {
-                    interval: {
-                        from: ownershipPercentage?.vaerdi ? parseFloat(ownershipPercentage.vaerdi) : null,
-                        to: ownershipPercentage?.vaerdi ? parseFloat(ownershipPercentage.vaerdi) : null,
-                    },
-                    accurate: null,
+                    interval: CorporateGroupService.convertDecimalToRange(ownershipDecimal),
+                    accurate: ownershipDecimal === 1 ? true : false,
                 },
-                dateOfIncorporation: dateOfIncorporation ? new Date(dateOfIncorporation).toISOString() : null,
+                votingRightsPercentage: {
+                    interval: CorporateGroupService.convertDecimalToRange(votingRightsDecimal),
+                    accurate: votingRightsDecimal === 1 ? true : false,
+                },
+                dateOfIncorporation: CorporateGroupService.safeIsoDate(dateOfIncorporation),
+                ...CorporateGroupService.extractCompanyDetails(subsidiary),
             };
         });
     }
@@ -218,34 +395,25 @@ export default abstract class CorporateGroupService {
     private static flattenCorporateGroup(
         company: CorporateGroup,
         level: number = 0,
-        parent?: { name: string; cvr: number }
+        parent?: { name: string; cvr: number },
     ): CompanyFlattened[] {
         let flattenedCompanies: CompanyFlattened[] = [];
 
+        // Carry every Company field over; only the tree structure is replaced by level/parent.
+        const { subsidiaries: _subsidiaries, ...companyFields } = company;
+
         if (!parent) {
-            const parentCompany: CompanyFlattened = {
-                name: company.name,
-                cvr: company.cvr,
-                corporateForm: company.corporateForm,
-                financialYear: company.financialYear,
-                ownershipPercentage: company.ownershipPercentage,
-                dateOfIncorporation: company.dateOfIncorporation,
+            flattenedCompanies.push({
+                ...companyFields,
                 level: level,
                 parent: null,
-            };
-
-            flattenedCompanies.push(parentCompany);
+            });
         }
 
         if (level > 0) {
             // Don't add the root company
             flattenedCompanies.push({
-                name: company.name,
-                cvr: company.cvr,
-                corporateForm: company.corporateForm,
-                financialYear: company.financialYear,
-                ownershipPercentage: company.ownershipPercentage,
-                dateOfIncorporation: company.dateOfIncorporation,
+                ...companyFields,
                 level,
                 parent: parent!,
             });
@@ -254,7 +422,7 @@ export default abstract class CorporateGroupService {
         if (company.subsidiaries) {
             company.subsidiaries.forEach((subsidiary) => {
                 flattenedCompanies = flattenedCompanies.concat(
-                    this.flattenCorporateGroup(subsidiary, level + 1, { name: company.name, cvr: company.cvr })
+                    this.flattenCorporateGroup(subsidiary, level + 1, { name: company.name, cvr: company.cvr }),
                 );
             });
         }
@@ -264,17 +432,17 @@ export default abstract class CorporateGroupService {
 
     public static async getCorporateGroup(
         cvrNumber: number,
-        options: { flatten: true }
+        options: { flatten: true },
     ): Promise<CorporateGroupFlattened | null>;
     public static async getCorporateGroup(
         cvrNumber: number,
-        options?: { flatten?: false }
+        options?: { flatten?: false },
     ): Promise<CorporateGroup | null>;
     public static async getCorporateGroup(
         cvrNumber: number,
         options?: {
             flatten?: boolean;
-        }
+        },
     ): Promise<CorporateGroup | CorporateGroupFlattened | null> {
         const response = await CorporateGroupService.getCompanyFromTheDanishBusinessRegistrationAPI(cvrNumber);
 
@@ -295,21 +463,24 @@ export default abstract class CorporateGroupService {
 
         const dateOfIncorporation =
             parentCompany.livsforloeb.sort(
-                (a, b) => new Date(a.periode.gyldigFra).getTime() - new Date(b.periode.gyldigFra).getTime()
+                (a, b) => new Date(a.periode.gyldigFra).getTime() - new Date(b.periode.gyldigFra).getTime(),
             )[0]?.periode?.gyldigFra ??
             parentCompany.virksomhedMetadata.stiftelsesDato ??
             null;
 
-        const financialYearStartDate =
-            parentCompany.attributter
-                .find((attr) => attr.type === "REGNSKABSÅR_SLUT")
-                ?.vaerdier.find((value) => value.periode?.gyldigTil === null)?.vaerdi ?? null;
-        const financialYearEndDate =
-            parentCompany.attributter
-                .find((attr) => attr.type === "REGNSKABSÅR_START")
-                ?.vaerdier.find((value) => value.periode?.gyldigTil === null)?.vaerdi ?? null;
+        const financialYearStartDate = CorporateGroupService.currentAttributeValue(
+            parentCompany.attributter,
+            "REGNSKABSÅR_START",
+        );
+        const financialYearEndDate = CorporateGroupService.currentAttributeValue(
+            parentCompany.attributter,
+            "REGNSKABSÅR_SLUT",
+        );
 
-        const subsidiaries = await CorporateGroupService.getSubsidiaries(cvrNumber);
+        const { subsidiaries, selfOwnershipPercentage } = await CorporateGroupService.getSubsidiaries(
+            cvrNumber,
+            new Set([cvrNumber]),
+        );
 
         const corporateGroup = {
             name,
@@ -323,14 +494,23 @@ export default abstract class CorporateGroupService {
                 startDate: financialYearStartDate ?? null,
                 endDate: financialYearEndDate ?? null,
             },
+            selfOwnershipPercentage: selfOwnershipPercentage,
             ownershipPercentage: {
                 interval: {
                     from: null,
                     to: null,
                 },
-                accurate: null,
+                accurate: false,
             },
-            dateOfIncorporation: dateOfIncorporation ? new Date(dateOfIncorporation).toISOString() : null,
+            votingRightsPercentage: {
+                interval: {
+                    from: null,
+                    to: null,
+                },
+                accurate: false,
+            },
+            dateOfIncorporation: CorporateGroupService.safeIsoDate(dateOfIncorporation),
+            ...CorporateGroupService.extractCompanyDetails(parentCompany),
             subsidiaries: subsidiaries,
         };
 
@@ -341,23 +521,57 @@ export default abstract class CorporateGroupService {
         return corporateGroup;
     }
 
-    private static async getSubsidiaries(cvrNumber: number): Promise<CorporateGroup[] | null> {
+    private static async getSubsidiaries(
+        cvrNumber: number,
+        visited: Set<number> = new Set([cvrNumber]),
+    ): Promise<{
+        subsidiaries: CorporateGroup[] | null;
+        selfOwnershipPercentage: { from: number | null; to: number | null } | null;
+    }> {
         const subsidiaries = await this.getCompanySubsidiariesFromDanishBusinessRegistrationAPI(cvrNumber);
 
-        if (!subsidiaries || subsidiaries.length === 0) return null;
-
-        const corporateGroup = subsidiaries.map(async (subsidiary) => {
-            const subsidiaries = await CorporateGroupService.getSubsidiaries(subsidiary.cvr);
+        if (!subsidiaries || subsidiaries.length === 0)
             return {
-                name: subsidiary.name,
-                cvr: subsidiary.cvr,
-                corporateForm: subsidiary.corporateForm,
-                financialYear: subsidiary.financialYear,
-                ownershipPercentage: subsidiary.ownershipPercentage,
-                dateOfIncorporation: subsidiary.dateOfIncorporation,
-                subsidiaries: subsidiaries, // Subsidiaries of this subsidiary are not fetched here
-            } as CorporateGroup;
+                subsidiaries: null,
+                selfOwnershipPercentage: null,
+            };
+
+        const selfOwnership = subsidiaries.find((subsidiary) => subsidiary.cvr === cvrNumber);
+        const selfOwnershipPercentage = selfOwnership ? selfOwnership.ownershipPercentage : null;
+
+        // Filter out the company itself AND any CVR already visited up the ownership chain
+        // to prevent infinite recursion on circular ownership structures.
+        const filteredSubsidiaries = subsidiaries.filter(
+            (subsidiary) => subsidiary.cvr !== cvrNumber && !visited.has(subsidiary.cvr),
+        );
+
+        if (filteredSubsidiaries.length === 0)
+            return {
+                subsidiaries: null,
+                selfOwnershipPercentage: {
+                    from: selfOwnershipPercentage ? selfOwnershipPercentage.interval.from : null,
+                    to: selfOwnershipPercentage ? selfOwnershipPercentage.interval.to : null,
+                },
+            };
+
+        const corporateGroup = filteredSubsidiaries.map(async (subsidiary) => {
+            const nestedVisited = new Set(visited);
+            nestedVisited.add(subsidiary.cvr);
+            const { subsidiaries: nestedSubsidiaries, selfOwnershipPercentage: nestedSelfOwnershipPercentage } =
+                await CorporateGroupService.getSubsidiaries(subsidiary.cvr, nestedVisited);
+            return {
+                ...subsidiary,
+                selfOwnershipPercentage: nestedSelfOwnershipPercentage,
+                subsidiaries: nestedSubsidiaries,
+            } satisfies CorporateGroup;
         });
-        return Promise.all(corporateGroup);
+
+        return {
+            subsidiaries: await Promise.all(corporateGroup),
+            selfOwnershipPercentage: {
+                from: selfOwnershipPercentage ? selfOwnershipPercentage.interval.from : null,
+                to: selfOwnershipPercentage ? selfOwnershipPercentage.interval.to : null,
+            },
+        };
     }
 }

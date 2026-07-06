@@ -3,6 +3,14 @@ import chalk from "chalk";
 import z from "zod";
 
 const environmentSchema = z.object({
+    API_VERSION: z.string({
+        error: (issue) => {
+            if (issue.input === undefined) {
+                return { message: "API_VERSION må ikke være tom." };
+            }
+            return { message: "API_VERSION skal være en streng." };
+        },
+    }),
     API_KEY: z
         .string({
             error: (issue) => {
@@ -34,16 +42,6 @@ const environmentSchema = z.object({
             },
         })
         .default("development"),
-    JWT_SECRET: z
-        .string({
-            error: (issue) => {
-                if (issue.input === undefined) {
-                    return { message: "JWT hemmelighed må ikke være tom." };
-                }
-                return { message: "JWT hemmelighed skal være en streng." };
-            },
-        })
-        .min(32, { message: "JWT hemmelighed skal være mindst 32 tegn lang." }),
     DOCUMENTATION_USERNAME: z
         .string({
             error: (issue) => {
