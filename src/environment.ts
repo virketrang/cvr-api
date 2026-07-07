@@ -51,7 +51,7 @@ const environmentSchema = z.object({
                 return { message: "API-brugernavnet skal være en streng." };
             },
         })
-        .min(16, "API-brugernavnet skal være mindst 16 tegn langt."),
+        .min(2, "API-brugernavnet skal være mindst 2 tegn langt."),
     API_PASSWORD: z
         .string({
             error: (issue) => {
