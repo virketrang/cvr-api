@@ -10,9 +10,9 @@ export const paramSchema = z.object({
                 return { message: "CVR-nummeret skal være en streng." };
             },
         })
-        .length(8, {
+        .regex(/^\d{8}$/, {
             error: (issue) => {
-                return { message: `CVR-nummeret skal have præcis 8 cifre. Du angav ${issue.input}` };
+                return { message: `CVR-nummeret skal bestå af præcis 8 cifre. Du angav ${issue.input}` };
             },
         })
         .openapi({
@@ -501,6 +501,7 @@ const errorCodeSchema = z.enum([
     "UPSTREAM_BAD_RESPONSE",
     "NOT_FOUND",
     "INVALID_CVR",
+    "RATE_LIMITED",
     "UNKNOWN_TAXONOMY",
     "MALFORMED_XML",
     "MISSING_NAMESPACE",
@@ -565,9 +566,9 @@ export const responseSchema = z.object({
 export const batchBodySchema = z.object({
     cvrNumbers: z
         .array(
-            z.coerce.string().length(8, {
+            z.coerce.string().regex(/^\d{8}$/, {
                 error: (issue) => ({
-                    message: `Hvert CVR-nummer skal have præcis 8 cifre. Du angav ${issue.input}`,
+                    message: `Hvert CVR-nummer skal bestå af præcis 8 cifre. Du angav ${issue.input}`,
                 }),
             }),
         )

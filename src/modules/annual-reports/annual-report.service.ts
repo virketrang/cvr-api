@@ -12,9 +12,13 @@ import type {
 
 import XBRLDocument from "./annual-report.utils.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
-import { basicAuthHeader, fetchUpstreamJson, fetchWithTimeout } from "../../utils/http.js";
+import { basicAuthHeader, fetchUpstreamJson, fetchWithTimeout, isUrlOnHost } from "../../utils/http.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/offentliggoerelser/_search";
+
+// Document URLs come from a plain-HTTP upstream response (virk.dk has no TLS), so
+// they are only trusted as far as this host; anything else is refused, see isUrlOnHost.
+const DOCUMENT_HOST = "virk.dk";
 
 export default abstract class AnnualReportService {
     public static async getAnnualReportsFromDanishBusinessRegistrationAPI(
@@ -65,9 +69,17 @@ export default abstract class AnnualReportService {
                         .filter((document) => document.dokumentMimeType === "application/xml")
                         .map(async (document) => {
                             let xmlText = "";
+                            if (!isUrlOnHost(document.dokumentUrl, DOCUMENT_HOST)) {
+                                console.warn(
+                                    `Refused to download document from unexpected host (not ${DOCUMENT_HOST}): ${document.dokumentUrl}`,
+                                );
+                                return { ...document, xmlText };
+                            }
                             try {
                                 const xmlResponse = await fetchWithTimeout(document.dokumentUrl);
-                                if (xmlResponse.ok) {
+                                // Re-check the FINAL url: a redirect must not escape the
+                                // allowlisted host either.
+                                if (xmlResponse.ok && isUrlOnHost(xmlResponse.url, DOCUMENT_HOST)) {
                                     xmlText = await xmlResponse.text();
                                 }
                             } catch {

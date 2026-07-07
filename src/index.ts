@@ -11,6 +11,7 @@ import chalk from "chalk";
 import environment from "./environment.js";
 import endpoints, { baseUrl } from "./routes.js";
 import { ErrorCode, toAppError, type ApiErrorBody } from "./utils/api-error.js";
+import { rateLimit } from "./utils/rate-limit.js";
 
 import * as corporateGroups from "./modules/corporate-group-structures/corporate-group.controller.js";
 import * as annualReports from "./modules/annual-reports/annual-report.controller.js";
@@ -41,17 +42,21 @@ app.use("*", cors());
 // matches "/api" as an exact path only, so without the wildcard the auth check
 // never runs for the actual endpoints.
 // `some(...)` passes if EITHER scheme succeeds: a bearer API_KEY, or basic auth
-// with the DOCUMENTATION_* credentials.
+// with the API_USERNAME/API_PASSWORD credentials.
 app.use(
     "/api/*",
     some(
         bearerAuth({ token: environment.API_KEY }),
         basicAuth({
-            username: environment.DOCUMENTATION_USERNAME,
-            password: environment.DOCUMENTATION_PASSWORD,
+            username: environment.API_USERNAME,
+            password: environment.API_PASSWORD,
         }),
     ),
 );
+
+// Rate limiting sits AFTER auth so unauthenticated requests are rejected with 401
+// before they consume a client's quota.
+app.use("/api/*", rateLimit());
 
 app.openapi(corporateGroups.route, corporateGroups.router);
 app.openapi(corporateGroups.flattenedRoute, corporateGroups.flattenedRouter);
@@ -102,7 +107,9 @@ app.onError((err, ctx) => {
     // the errorCode contract holds without per-controller try/catch wrappers.
     const appError = toAppError(err);
 
-    console.error(`[${appError.errorCode}] ${appError.message}`, err instanceof Error && err.stack ? `\n${err.stack}` : "");
+    // Log the ORIGINAL error (message + stack), not just the sanitized AppError —
+    // for INTERNAL errors the client-facing message is generic by design.
+    console.error(`[${appError.errorCode}] ${appError.message}`, err instanceof Error && err.stack ? `\n${err.stack}` : err);
 
     const body: ApiErrorBody = {
         status: "error",
@@ -110,7 +117,7 @@ app.onError((err, ctx) => {
         message: appError.message,
     };
 
-    return ctx.json(body, appError.httpStatus as 404 | 422 | 500 | 503);
+    return ctx.json(body, appError.httpStatus as 404 | 422 | 429 | 500 | 503);
 });
 
 serve(

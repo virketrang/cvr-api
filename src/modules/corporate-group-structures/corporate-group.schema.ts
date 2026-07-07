@@ -286,9 +286,9 @@ export const paramSchema = z.object({
                 return { message: "CVR-nummeret skal være en streng." };
             },
         })
-        .length(8, {
+        .regex(/^\d{8}$/, {
             error: (issue) => {
-                return { message: `CVR-nummeret skal have præcis 8 cifre. Du angav ${issue.input}` };
+                return { message: `CVR-nummeret skal bestå af præcis 8 cifre. Du angav ${issue.input}` };
             },
         })
         .openapi({

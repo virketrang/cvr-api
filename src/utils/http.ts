@@ -20,6 +20,26 @@ export function fetchWithTimeout(
     });
 }
 
+/**
+ * True when `url` points at the given host or one of its subdomains (http/https
+ * only). Used to allowlist URLs that arrive from upstreams we can only reach over
+ * plain HTTP (virk.dk offers no TLS): a tampered response must never be able to
+ * steer this server into fetching an arbitrary URL — e.g. the Cloud Run metadata
+ * service — so such URLs are validated against the expected host before AND after
+ * redirects.
+ */
+export function isUrlOnHost(url: string, host: string): boolean {
+    try {
+        const parsed = new URL(url);
+        return (
+            (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+            (parsed.hostname === host || parsed.hostname.endsWith(`.${host}`))
+        );
+    } catch {
+        return false;
+    }
+}
+
 /** Basic-auth Authorization header value for the given credentials. */
 export function basicAuthHeader(username: string, password: string): string {
     return `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;

@@ -42,26 +42,26 @@ const environmentSchema = z.object({
             },
         })
         .default("development"),
-    DOCUMENTATION_USERNAME: z
+    API_USERNAME: z
         .string({
             error: (issue) => {
                 if (issue.input === undefined) {
-                    return { message: "Dokumentationsbrugernavn må ikke være tomt." };
+                    return { message: "API-brugernavnet må ikke være tomt." };
                 }
-                return { message: "Dokumentationsbrugernavn skal være en streng." };
+                return { message: "API-brugernavnet skal være en streng." };
             },
         })
-        .min(1, "Dokumentationsbrugernavn må ikke være tomt."),
-    DOCUMENTATION_PASSWORD: z
+        .min(16, "API-brugernavnet skal være mindst 16 tegn langt."),
+    API_PASSWORD: z
         .string({
             error: (issue) => {
                 if (issue.input === undefined) {
-                    return { message: "Dokumentationsadgangskode må ikke være tom." };
+                    return { message: "API-adgangskoden må ikke være tom." };
                 }
-                return { message: "Dokumentationsadgangskode skal være en streng." };
+                return { message: "API-adgangskoden skal være en streng." };
             },
         })
-        .min(1, "Dokumentationsadgangskode må ikke være tom."),
+        .min(16, "API-adgangskoden skal være mindst 16 tegn lang."),
     CVR_API_USERNAME: z
         .string({
             error: (issue) => {
