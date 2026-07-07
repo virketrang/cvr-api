@@ -20,9 +20,6 @@ import * as rateOfReturnOnCapital from "./modules/rate-of-return-on-capital/rate
 import * as currencyRates from "./modules/currency-rates/currency-rates.controller.js";
 
 const app = new OpenAPIHono({
-    // Request-validation failures must speak the same structured error language as
-    // everything else (ApiErrorBody with an errorCode the VBA client can switch on)
-    // instead of zod-openapi's default raw ZodError body.
     defaultHook: (result, ctx) => {
         if (!result.success) {
             const body: ApiErrorBody = {
@@ -35,14 +32,8 @@ const app = new OpenAPIHono({
     },
 });
 
-// Enable CORS for all routes
 app.use("*", cors());
 
-// Protect every /api/* endpoint. NOTE: the path MUST be "/api/*" — Hono's use()
-// matches "/api" as an exact path only, so without the wildcard the auth check
-// never runs for the actual endpoints.
-// `some(...)` passes if EITHER scheme succeeds: a bearer API_KEY, or basic auth
-// with the API_USERNAME/API_PASSWORD credentials.
 app.use(
     "/api/*",
     some(
@@ -54,8 +45,6 @@ app.use(
     ),
 );
 
-// Rate limiting sits AFTER auth so unauthenticated requests are rejected with 401
-// before they consume a client's quota.
 app.use("/api/*", rateLimit());
 
 app.openapi(corporateGroups.route, corporateGroups.router);
@@ -94,22 +83,16 @@ app.notFound((ctx) => {
 });
 
 app.onError((err, ctx) => {
-    // A custom onError fully replaces Hono's default handler, which returns
-    // err.getResponse() for HTTPExceptions. Preserve that so framework-thrown
-    // exceptions — notably the bearer/basic auth 401s with their WWW-Authenticate
-    // header — return correctly instead of being flattened into a generic 500.
     if (err instanceof HTTPException) {
         return err.getResponse();
     }
 
-    // Every other error — AppErrors thrown by services/controllers as well as
-    // unexpected ones — is normalized to the shared ApiErrorBody shape here, so
-    // the errorCode contract holds without per-controller try/catch wrappers.
     const appError = toAppError(err);
 
-    // Log the ORIGINAL error (message + stack), not just the sanitized AppError —
-    // for INTERNAL errors the client-facing message is generic by design.
-    console.error(`[${appError.errorCode}] ${appError.message}`, err instanceof Error && err.stack ? `\n${err.stack}` : err);
+    console.error(
+        `[${appError.errorCode}] ${appError.message}`,
+        err instanceof Error && err.stack ? `\n${err.stack}` : err,
+    );
 
     const body: ApiErrorBody = {
         status: "error",
