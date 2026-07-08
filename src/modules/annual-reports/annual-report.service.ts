@@ -12,7 +12,13 @@ import type {
 
 import XBRLDocument from "./annual-report.utils.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
-import { basicAuthHeader, fetchUpstreamJson, fetchWithTimeout, isUrlOnHost } from "../../utils/http.js";
+import {
+    basicAuthHeader,
+    fetchUpstreamJson,
+    fetchWithTimeout,
+    isUrlOnHost,
+    readXmlResponseText,
+} from "../../utils/http.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/offentliggoerelser/_search";
 
@@ -80,7 +86,9 @@ export default abstract class AnnualReportService {
                                 // Re-check the FINAL url: a redirect must not escape the
                                 // allowlisted host either.
                                 if (xmlResponse.ok && isUrlOnHost(xmlResponse.url, DOCUMENT_HOST)) {
-                                    xmlText = await xmlResponse.text();
+                                    // Encoding-aware: many XBRL filings are ISO-8859-1/UTF-16
+                                    // and only say so in the XML prolog, which .text() ignores.
+                                    xmlText = await readXmlResponseText(xmlResponse);
                                 }
                             } catch {
                                 // Leave xmlText empty; extractAnnualReportFromXML will record

@@ -34,6 +34,17 @@ const app = new OpenAPIHono({
 
 app.use("*", cors());
 
+// Declare the charset explicitly on JSON responses. The bodies are UTF-8, but without
+// "charset=utf-8" in the header several common consumers (Excel/Power Query, PHP, older
+// Java HTTP clients) fall back to ISO-8859-1 and mangle Æ/Ø/Å in company names.
+app.use("*", async (ctx, next) => {
+    await next();
+    const contentType = ctx.res.headers.get("content-type");
+    if (contentType?.startsWith("application/json") && !contentType.includes("charset")) {
+        ctx.res.headers.set("content-type", "application/json; charset=utf-8");
+    }
+});
+
 app.use(
     "/api/*",
     some(
