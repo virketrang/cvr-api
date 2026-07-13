@@ -351,35 +351,73 @@ const incomeStatementSchema = z.object({
     profitLossAfterAttributableToMinorityInterest: accountSchema,
 });
 
-const relatedEntitySchema = z.object({
+export const groupEntityFromNotesSchema = z.object({
+    name: z.string().openapi({
+        description: "Navnet på virksomheden som angivet i noten",
+        example: "Orifarm Oy",
+    }),
     cvrNumber: z.string().nullable().openapi({
-        description: "Den nærtstående virksomheds CVR-nummer",
-        example: "12345678",
+        description: "Virksomhedens CVR-nummer, når det fremgår af strukturerede fakta (ellers null)",
+        example: null,
     }),
-    legalEntityIdentifier: z.string().nullable().openapi({
-        description: "Den nærtstående virksomheds LEI-kode",
-        example: "5299000J2N45DDNE4Y28",
-    }),
-    pNumber: z.string().nullable().openapi({
-        description: "Den nærtstående virksomheds P-nummer",
-        example: "1012345678",
-    }),
-    name: z.string().nullable().openapi({
-        description: "Navnet på den nærtstående virksomhed",
-        example: "Gamma 26 ApS",
+    country: z.string().nullable().openapi({
+        description: "Land, når noten angiver et (genkendt mod en fast landeliste)",
+        example: "Finland",
     }),
     registeredOffice: z.string().nullable().openapi({
-        description: "Virksomhedens hjemsted",
-        example: "Haderslev",
+        description: "Hjemsted (typisk en by), når noten angiver et og det ikke er et land",
+        example: "Roskilde",
     }),
     legalForm: z.string().nullable().openapi({
-        description: "Virksomhedens selskabsform",
-        example: "ApS",
+        description: "Virksomhedens retsform som angivet i noten",
+        example: "Oy",
     }),
     ownershipPercentage: z.number().nullable().openapi({
-        description: "Ejerandel i tilknyttet virksomhed (i procent)",
+        description:
+            "Ejerandel som angivet i noten (kun medtaget når den kunne udlæses med sikkerhed) — " +
+            "typisk koncernens samlede (indirekte) andel; kan ikke skelnes fra direkte ejerandel.",
         example: 100,
     }),
+    votingRightsPercentage: z.number().nullable().openapi({
+        description: "Stemmeandel som angivet i noten, når den findes",
+        example: null,
+    }),
+    source: z.enum(["structured", "noteTable", "noteText"]).openapi({
+        description:
+            "Hvordan oplysningen er udlæst: 'structured' = taksonomiens opmærkede fakta om nærtstående " +
+            "parter (ejerandele normaliseret til procent), 'noteTable' = fra en tabel i noten, " +
+            "'noteText' = fra ustruktureret notetekst (heuristisk, men kun ved entydig læsning).",
+        example: "noteText",
+    }),
+    sourceConcept: z.string().openapi({
+        description: "Det XBRL-begreb noten var opmærket som (vejledende — opmærkningen er upålidelig)",
+        example: "InformationOnShorttermInvestmentsInGroupEnterprises",
+    }),
+    scope: z.enum(["consolidated", "solo"]).nullable().openapi({
+        description: "Om noten står i koncern- eller moderselskabskontekst, når det er opmærket",
+        example: "consolidated",
+    }),
+    parent: z
+        .object({
+            name: z.string().nullable().openapi({
+                description: "Modervirksomhedens navn",
+                example: "Kruso A/S",
+            }),
+            cvrNumber: z.string().nullable().openapi({
+                description: "Modervirksomhedens CVR-nummer",
+                example: "25524365",
+            }),
+        })
+        .nullable()
+        .openapi({
+            description:
+                "Virksomhedens DIREKTE modervirksomhed — kun sat når den kan bestemmes med sikkerhed: en note i " +
+                "moderselskabskontekst (eller i en årsrapport helt uden koncernregnskab) beskriver selskabets egne " +
+                "direkte kapitalandele, så det aflæggende selskab er moder, og ownershipPercentage er moderens " +
+                "direkte andel. I koncernnoter (hele koncernen oplistet) kan den direkte moder ikke bestemmes — " +
+                "feltet er null, og ownershipPercentage er koncernens samlede andel.",
+            example: null,
+        }),
 });
 
 const consolidatedFinancialStatementsSchema = z.object({
@@ -447,17 +485,26 @@ const annualReportSchema = z.object({
             },
         },
     }),
-    relatedEntities: z.array(relatedEntitySchema).openapi({
-        description: "En liste over relaterede enheder, der har en betydelig indflydelse på virksomheden.",
+    groupEntitiesFromNotes: z.array(groupEntityFromNotesSchema).openapi({
+        description:
+            "Virksomheder nævnt i årsrapporten som (potentielt) en del af koncernen — taksonomiens " +
+            "strukturerede fakta om nærtstående parter samlet med virksomheder udlæst fra notetabeller " +
+            "og ustruktureret notetekst. Særligt relevant for udenlandske koncernselskaber, som ikke " +
+            "findes i CVR-registret. Ejerandele medtages kun, når de kunne udlæses med sikkerhed; se " +
+            "parent-feltet for hvornår de er moderens direkte andel hhv. koncernens samlede andel.",
         example: [
             {
-                cvrNumber: "12345678",
-                legalEntityIdentifier: null,
-                pNumber: null,
-                name: "Datterselskab A/S",
-                registeredOffice: "København",
-                legalForm: "Aktieselskab",
+                name: "Orifarm Oy",
+                cvrNumber: null,
+                country: "Finland",
+                registeredOffice: null,
+                legalForm: "Oy",
                 ownershipPercentage: 100,
+                votingRightsPercentage: null,
+                source: "noteText",
+                sourceConcept: "InformationOnShorttermInvestmentsInGroupEnterprises",
+                scope: "consolidated",
+                parent: null,
             },
         ],
     }),
@@ -583,8 +630,22 @@ export const responseSchema = z.object({
         example: 10,
     }),
     status: z.enum(["success", "failed", "error"]).openapi({
-        description: "Status for forespørgslen.",
+        description:
+            "Status for forespørgslen. 'success' = mindst én årsrapport kunne læses (eller ingen er indberettet). " +
+            "'failed' = der findes årsrapporter, men ingen kunne læses — se errorCode/message for årsagen " +
+            "(typisk UNKNOWN_TAXONOMY for virksomheder, der indberetter efter IFRS/ESEF).",
         example: "success",
+    }),
+    errorCode: errorCodeSchema.optional().openapi({
+        description:
+            "Maskinlæsbar årsag, når status er 'failed' — den hyppigste årsag blandt de oversprungne dokumenter.",
+        example: "UNKNOWN_TAXONOMY",
+    }),
+    message: z.string().optional().openapi({
+        description: "Menneskelæsbar (dansk) årsag, når status er 'failed'.",
+        example:
+            "Årsrapporten er aflagt efter IFRS/ESEF-taksonomien, som ikke understøttes. " +
+            "Det gælder typisk børsnoterede og andre store virksomheder — tallene skal indtastes manuelt.",
     }),
     results: z.array(annualReportSchema).openapi({
         description: "En liste over årsrapporter for det angivne CVR-nummer.",
@@ -596,7 +657,7 @@ export const responseSchema = z.object({
                 },
                 unit: "DKK",
                 notes: {},
-                relatedEntities: [],
+                groupEntitiesFromNotes: [],
                 consolidatedFinancialStatements: [],
                 warnings: [],
                 incomeStatement: {},

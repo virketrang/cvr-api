@@ -8,11 +8,14 @@ import type {
     BatchAnnualReportResult,
     DanishBusinessRegistrationAccountingAPIResponse,
     ExtractResult,
+    GroupEntityFromNotes,
     PriorPeriodFigures,
     ReportSkip,
     ReportWarning,
     UnprocessedAnnualReport,
 } from "./annual-report.types.js";
+
+import { extractGroupEntities } from "./annual-report.notes-extraction.js";
 
 import XBRLDocument from "./annual-report.utils.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
@@ -120,6 +123,80 @@ export default abstract class AnnualReportService {
         return annualReports;
     }
 
+    /**
+     * Group entities mentioned in the notes of a company's NEWEST annual report.
+     * Deliberately lightweight (used to enrich every company in a corporate-group
+     * response): one search sorted newest-first with size 1, one document download,
+     * and only the notes extractor — no full statement extraction. Any failure
+     * yields an empty list; enrichment must never break the caller's endpoint.
+     */
+    public static async getNewestGroupEntitiesFromNotes(cvrNumber: number): Promise<GroupEntityFromNotes[]> {
+        try {
+            const data = await fetchUpstreamJson<DanishBusinessRegistrationAccountingAPIResponse>(
+                "Det offentlige register",
+                CVR_API_URL,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: basicAuthHeader(environment.CVR_API_USERNAME, environment.CVR_API_PASSWORD),
+                    },
+                    body: JSON.stringify({
+                        query: {
+                            bool: {
+                                must: [
+                                    { term: { cvrNummer: cvrNumber } },
+                                    { term: { offentliggoerelsestype: "regnskab" } },
+                                    { query_string: { query: 'dokumenter.dokumentMimeType:"application/xml"' } },
+                                ],
+                            },
+                        },
+                        sort: [{ "regnskab.regnskabsperiode.slutDato": { order: "desc" } }],
+                        size: 1,
+                    }),
+                },
+            );
+
+            const newest = data.hits.hits[0]?._source;
+            if (!newest) return [];
+
+            const document = newest.dokumenter.find((doc) => doc.dokumentMimeType === "application/xml");
+            if (!document || !isUrlOnHost(document.dokumentUrl, DOCUMENT_HOST)) return [];
+
+            const xmlResponse = await fetchWithTimeout(document.dokumentUrl);
+            if (!xmlResponse.ok || !isUrlOnHost(xmlResponse.url, DOCUMENT_HOST)) return [];
+
+            const xml = await readXmlResponseText(xmlResponse);
+            const xbrlDocument = new XBRLDocument(xml);
+
+            return extractGroupEntities(xbrlDocument, newest.regnskab.regnskabsperiode.slutDato);
+        } catch (error) {
+            console.warn(
+                `Kunne ikke udlæse koncernoplysninger fra noterne for CVR ${cvrNumber}: ` +
+                    `${toAppError(error).message}`,
+            );
+            return [];
+        }
+    }
+
+    /**
+     * A human-readable (Danish) explanation of an unsupported taxonomy. IFRS/ESEF
+     * filings (used by listed and other large companies) are the common case and get
+     * a specific message; otherwise the schema file name is included so the user can
+     * report exactly which taxonomy was encountered.
+     */
+    private static describeUnsupportedTaxonomy(taxonomy: string): string {
+        if (/ifrs|esef/i.test(taxonomy)) {
+            return (
+                "Årsrapporten er aflagt efter IFRS/ESEF-taksonomien, som ikke understøttes. " +
+                "Det gælder typisk børsnoterede og andre store virksomheder — tallene skal indtastes manuelt."
+            );
+        }
+
+        const schemaFile = taxonomy.split("/").pop() ?? taxonomy;
+        return `Årsrapporten anvender en ikke-understøttet taksonomi (${schemaFile}) og kunne ikke læses.`;
+    }
+
     public static extractAnnualReportFromXML(xml: string): ExtractResult {
         // The XBRLDocument constructor and extractTaxonomyData throw AppErrors with
         // specific codes (MALFORMED_XML, MISSING_NAMESPACE, MALFORMED_UNIT,
@@ -144,7 +221,7 @@ export default abstract class AnnualReportService {
                 return {
                     ok: false,
                     errorCode: ErrorCode.UNKNOWN_TAXONOMY,
-                    message: `Årsrapporten anvender en ukendt taksonomi (${taxonomy}) og kunne ikke læses.`,
+                    message: AnnualReportService.describeUnsupportedTaxonomy(taxonomy),
                 };
             }
 
@@ -160,12 +237,20 @@ export default abstract class AnnualReportService {
     public static async getAnnualReports(cvrNumber: number): Promise<AnnualReportResponse> {
         const xmlAnnualReports = await AnnualReportService.getAnnualReportsFromDanishBusinessRegistrationAPI(cvrNumber);
 
+        // Nothing published at all (e.g. a newly founded company whose first annual
+        // report is not due yet). Say so explicitly — an empty "success" is
+        // indistinguishable from a working extraction that found nothing, and has
+        // been mistaken for a bug.
         if (xmlAnnualReports.length === 0) {
             return {
                 total: 0,
-                status: "success",
+                status: "failed",
                 results: [],
                 skipped: [],
+                errorCode: ErrorCode.NO_DATA,
+                message:
+                    "Der er endnu ikke offentliggjort nogen årsrapport for selskabet " +
+                    "(fx fordi det er nystiftet, eller fordi første regnskabsår ikke er afsluttet).",
             };
         }
 
@@ -205,12 +290,40 @@ export default abstract class AnnualReportService {
             return dateB.getTime() - dateA.getTime();
         });
 
+        // Filings exist but not a single document could be read: report that as a
+        // company-level failure with a typed reason, so a client (e.g. the VBA
+        // workbook) can tell the user WHY there are no numbers — most commonly an
+        // unsupported (IFRS/ESEF) taxonomy — instead of showing an empty company.
+        if (annualReports.length === 0 && skipped.length > 0) {
+            const dominant = AnnualReportService.dominantSkipReason(skipped);
+            return {
+                results: [],
+                total: 0,
+                status: "failed",
+                skipped,
+                errorCode: dominant.errorCode,
+                message: dominant.message,
+            };
+        }
+
         return {
             results: annualReports,
             total: annualReports.length,
             status: "success",
             skipped,
         };
+    }
+
+    /** The most frequent skip reason, used as the company-level error when nothing parsed. */
+    private static dominantSkipReason(skipped: ReportSkip[]): Pick<ReportSkip, "errorCode" | "message"> {
+        const byCode = new Map<string, { count: number; skip: ReportSkip }>();
+        for (const skip of skipped) {
+            const entry = byCode.get(skip.errorCode) ?? { count: 0, skip };
+            entry.count += 1;
+            byCode.set(skip.errorCode, entry);
+        }
+        const dominant = [...byCode.values()].sort((a, b) => b.count - a.count)[0].skip;
+        return { errorCode: dominant.errorCode, message: dominant.message };
     }
 
     /**
@@ -329,6 +442,11 @@ export default abstract class AnnualReportService {
                             total: response.total,
                             results: response.results,
                             skipped: response.skipped,
+                            // Carried when the whole company failed (e.g. every filing
+                            // uses an unsupported taxonomy), so batch clients can tell
+                            // the user why this company came back empty.
+                            errorCode: response.errorCode,
+                            message: response.message,
                         };
                     } catch (error) {
                         // Isolate the failure to this one company and carry a typed code

@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
+import { groupEntityFromNotesSchema } from "../annual-reports/annual-report.schema.js";
+
 const percentageIntervalSchema = (subject: string) =>
     z
         .object({
@@ -238,6 +240,17 @@ const companySchema = z.object({
         description: "The rule for who can sign on behalf of the company (tegningsregel)",
         example: "Selskabet tegnes af den samlede bestyrelse.",
     }),
+    groupEntitiesFromNotes: z
+        .array(groupEntityFromNotesSchema)
+        .optional()
+        .openapi({
+            description:
+                "Virksomheder nævnt i noterne til DETTE selskabs seneste årsrapport som (potentielt) en del af " +
+                "koncernen — især udenlandske koncernselskaber, som ikke findes i CVR-registret. Selskaber, der " +
+                "allerede indgår i koncernstrukturen, er frasorteret. Ejerandele er typisk koncernens samlede " +
+                "(indirekte) andel og medtages kun, når de kunne udlæses med sikkerhed.",
+            example: [],
+        }),
 });
 
 export const responseSchema = companySchema

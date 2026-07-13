@@ -11,6 +11,8 @@ import type {
     Virksomhed,
 } from "./corporate-group.types.js";
 import environment from "../../environment.js";
+import AnnualReportService from "../annual-reports/annual-report.service.js";
+import { normalizeEntityName } from "../annual-reports/annual-report.notes-extraction.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 import { basicAuthHeader, fetchUpstreamJson } from "../../utils/http.js";
 
@@ -514,11 +516,50 @@ export default abstract class CorporateGroupService {
             subsidiaries: subsidiaries,
         };
 
+        await CorporateGroupService.attachGroupEntitiesFromNotes(corporateGroup);
+
         if (options?.flatten) {
             return this.flattenCorporateGroup(corporateGroup);
         }
 
         return corporateGroup;
+    }
+
+    /**
+     * Enriches EVERY company in the group with the group entities mentioned in the
+     * notes of its newest annual report (see AnnualReportService). Entities whose
+     * name matches a CVR-registered group member are dropped, so the field only
+     * holds ADDITIONAL potential members — mainly foreign companies the register
+     * cannot see. Fan-out is concurrency-capped, and failures leave a company with
+     * an empty list rather than failing the endpoint.
+     */
+    private static async attachGroupEntitiesFromNotes(root: CorporateGroup): Promise<void> {
+        const CONCURRENCY = 10;
+
+        const companies: CorporateGroup[] = [];
+        const collect = (company: CorporateGroup): void => {
+            companies.push(company);
+            (company.subsidiaries ?? []).forEach(collect);
+        };
+        collect(root);
+
+        const registeredNames = new Set(companies.map((company) => normalizeEntityName(company.name)));
+        const registeredCvrs = new Set(companies.map((company) => String(company.cvr).padStart(8, "0")));
+
+        for (let i = 0; i < companies.length; i += CONCURRENCY) {
+            const chunk = companies.slice(i, i + CONCURRENCY);
+
+            await Promise.all(
+                chunk.map(async (company) => {
+                    const entities = await AnnualReportService.getNewestGroupEntitiesFromNotes(company.cvr);
+                    company.groupEntitiesFromNotes = entities.filter(
+                        (entity) =>
+                            !registeredNames.has(normalizeEntityName(entity.name)) &&
+                            (entity.cvrNumber === null || !registeredCvrs.has(entity.cvrNumber.padStart(8, "0"))),
+                    );
+                }),
+            );
+        }
     }
 
     private static async getSubsidiaries(

@@ -110,6 +110,52 @@ export interface RelatedEntity {
     ownershipPercentage: number | null;
 }
 
+/**
+ * A company mentioned in the NOTES of an annual report as (potentially) part of
+ * the corporate group — extracted from note tables or unstructured note text, not
+ * from structured XBRL facts. Especially valuable for foreign group members,
+ * which the CVR register cannot see.
+ *
+ * `ownershipPercentage` is only set when confidently parsed, and is the share as
+ * stated in the note — typically the group's TOTAL (i.e. usually indirect) share;
+ * direct vs indirect cannot be distinguished from the filing.
+ */
+export interface GroupEntityFromNotes {
+    name: string;
+    /** CVR number, when carried by structured facts. Always null for parsed note text/tables. */
+    cvrNumber: string | null;
+    /** Country, when the note states one (recognized against a curated list). */
+    country: string | null;
+    /** Registered office (hjemsted, typically a city), when stated and not a country. */
+    registeredOffice: string | null;
+    legalForm: string | null;
+    ownershipPercentage: number | null;
+    votingRightsPercentage: number | null;
+    /**
+     * "structured" = the taxonomy's tagged related-entity facts;
+     * "noteTable" = parsed from an XHTML table in a note;
+     * "noteText" = parsed from plain note text.
+     */
+    source: "structured" | "noteTable" | "noteText";
+    /** The XBRL concept the note was tagged as (concept names are unreliable; informational only). */
+    sourceConcept: string;
+    /** Whether the note sits in a consolidated (koncern) or solo context, when tagged. */
+    scope: "consolidated" | "solo" | null;
+    /**
+     * The entity's DIRECT parent, set only when it is certain: a solo-scope note —
+     * or any note in a filing without consolidated statements — describes the
+     * reporting company's own direct holdings, so the reporting company is the
+     * parent and `ownershipPercentage` is that parent's direct share. In
+     * consolidated-scope notes the listing covers the whole group, the direct
+     * parent cannot be determined, and this stays null (the percentage is then
+     * the group's total share).
+     */
+    parent: {
+        name: string | null;
+        cvrNumber: string | null;
+    } | null;
+}
+
 export interface ConsolidatedFinancialStatementsSubsidiary {
     cvrNumber: string | null;
     legalEntityIdentifier: string | null;
@@ -185,10 +231,19 @@ export interface ÅRLExtract {
 
 export type AnnualReportResponse = {
     total: number;
+    /**
+     * "success" = at least one report parsed (or none were filed at all);
+     * "failed" = filings exist but not a single document could be read — see
+     * errorCode/message for the dominant reason (typically UNKNOWN_TAXONOMY for
+     * IFRS/ESEF filers).
+     */
     status: "failed" | "success" | "error";
     results: Array<AnnualReport<Account>>;
     /** Documents that were fetched but could not be parsed into a usable report. */
     skipped: ReportSkip[];
+    /** Set when status is "failed": the dominant reason nothing could be read. */
+    errorCode?: ErrorCode;
+    message?: string;
 };
 
 export interface AnnualReport<T> {
@@ -197,7 +252,13 @@ export interface AnnualReport<T> {
     balancesheet: BalanceSheet<T>;
     incomeStatement: IncomeStatement<T>;
     notes: Notes<T>;
-    relatedEntities: RelatedEntity[];
+    /**
+     * Companies mentioned in this report as (potentially) part of the corporate
+     * group — the taxonomy's structured related-entity facts merged with entities
+     * parsed from note tables/text, incl. foreign members invisible to the CVR
+     * register. See GroupEntityFromNotes for parent/ownership semantics.
+     */
+    groupEntitiesFromNotes: GroupEntityFromNotes[];
     consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[];
     /**
      * Koncernregnskabet: the group's income statement and balance sheet, present

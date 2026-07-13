@@ -1,3 +1,5 @@
+import type { GroupEntityFromNotes } from "../annual-reports/annual-report.types.js";
+
 export interface CorporateForm {
     code: number | null;
     name: string | null;
@@ -323,6 +325,15 @@ export interface Company {
     audited: boolean;
     /** The rule for who can sign on behalf of the company (TEGNINGSREGEL). */
     powerToBind: string | null;
+    /**
+     * Companies mentioned in the notes of THIS company's newest annual report as
+     * (potentially) part of the corporate group — incl. foreign members the CVR
+     * register cannot see. Entities matching a registered group member by name are
+     * filtered out, so this only holds ADDITIONAL potential members. Empty when the
+     * notes carry nothing usable or the annual report could not be fetched.
+     * Optional because it is attached in an enrichment pass after the group is built.
+     */
+    groupEntitiesFromNotes?: GroupEntityFromNotes[];
 }
 
 export interface CorporateGroup extends Company {

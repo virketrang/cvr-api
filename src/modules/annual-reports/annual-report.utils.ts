@@ -19,6 +19,7 @@ import type {
 } from "./annual-report.types.js";
 
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
+import { extractGroupEntities } from "./annual-report.notes-extraction.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
@@ -511,6 +512,29 @@ export default class XBRLDocument {
         return dayBefore.toISOString().slice(0, 10);
     }
 
+    /**
+     * The structured related-entity facts (fsa:RelatedEntityName + typed dimension)
+     * for the given reporting period — the tagged version of the kapitalandele
+     * note. Public so the corporate-group enrichment can extract these without
+     * running the full statement extraction.
+     */
+    public extractRelatedEntities(reportingPeriodEndDate: string): RelatedEntity[] {
+        return this.extractDimensionalGroup(ÅRL_TAXONOMY.body.informationOnRelatedEntities, reportingPeriodEndDate)
+            .map((group) => ({
+                cvrNumber: group.identificationNumberCvrOfRelatedEntity?.value ?? null,
+                legalEntityIdentifier: group.legalEntityIdentifierOfRelatedEntity?.value ?? null,
+                pNumber: group.identificationNumberPnrOfRelatedEntity?.value ?? null,
+                name: group.relatedEntityName?.value ?? null,
+                registeredOffice: group.relatedEntityRegisteredOffice?.value ?? null,
+                legalForm: group.relatedEntityLegalForm?.value ?? null,
+                ownershipPercentage:
+                    group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity?.value != null
+                        ? parseFloat(group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity.value)
+                        : null,
+            }))
+            .filter((entity) => Object.values(entity).some((value) => value !== null));
+    }
+
     public extractTaxonomyData(): { report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null } {
         const reportingPeriodXBRLRecords = {} as ReportingPeriod<XBRLRecord>;
         const notesXBRLRecords = {} as Notes<XBRLRecord>;
@@ -710,23 +734,7 @@ export default class XBRLDocument {
             });
         }
 
-        const relatedEntities: RelatedEntity[] = this.extractDimensionalGroup(
-            ÅRL_TAXONOMY.body.informationOnRelatedEntities,
-            reportingPeriod.reportingPeriodEndDate,
-        )
-            .map((group) => ({
-                cvrNumber: group.identificationNumberCvrOfRelatedEntity?.value ?? null,
-                legalEntityIdentifier: group.legalEntityIdentifierOfRelatedEntity?.value ?? null,
-                pNumber: group.identificationNumberPnrOfRelatedEntity?.value ?? null,
-                name: group.relatedEntityName?.value ?? null,
-                registeredOffice: group.relatedEntityRegisteredOffice?.value ?? null,
-                legalForm: group.relatedEntityLegalForm?.value ?? null,
-                ownershipPercentage:
-                    group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity?.value != null
-                        ? parseFloat(group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity.value)
-                        : null,
-            }))
-            .filter((entity) => Object.values(entity).some((value) => value !== null));
+        const groupEntitiesFromNotes = extractGroupEntities(this, reportingPeriod.reportingPeriodEndDate);
 
         const consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[] =
             this.extractDimensionalGroup(
@@ -763,7 +771,7 @@ export default class XBRLDocument {
                 incomeStatement: incomeStatement,
                 balancesheet: balanceSheet,
                 notes: notes,
-                relatedEntities: relatedEntities,
+                groupEntitiesFromNotes: groupEntitiesFromNotes,
                 consolidatedFinancialStatements: consolidatedFinancialStatements,
                 consolidated: consolidated,
                 warnings: warnings,
