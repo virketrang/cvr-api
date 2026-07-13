@@ -18,8 +18,25 @@ export interface ReportSkip {
  * caller can report *why* a document was dropped.
  */
 export type ExtractResult =
-    | { ok: true; report: AnnualReport<Account> }
+    | { ok: true; report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }
     | { ok: false; errorCode: ErrorCode; message: string };
+
+/**
+ * The comparative (prior-period) figures a filing carries alongside its own
+ * period. Never exposed in the API response: they exist so the service can
+ * cross-check a year's report against the same year's comparatives in the
+ * following year's report and warn on differences (restatements).
+ */
+export interface PriorPeriodFigures {
+    /** End date of the preceding reporting period, i.e. the period the figures cover. */
+    endDate: string;
+    incomeStatement: Partial<IncomeStatement<Account>>;
+    balanceSheet: Partial<BalanceSheet<Account>>;
+    consolidated: {
+        incomeStatement: Partial<IncomeStatement<Account>>;
+        balanceSheet: Partial<BalanceSheet<Account>>;
+    } | null;
+}
 
 export interface UnprocessedAnnualReport {
     cvrNumber: number;
@@ -102,24 +119,51 @@ export interface ConsolidatedFinancialStatementsSubsidiary {
     placeWhereConsolidatedFinancialStatementsMayBeObtained: string | null;
 }
 
+/** Which statement of the report a warning entry points into. */
+export type StatementName =
+    | "balanceSheet"
+    | "incomeStatement"
+    | "notes"
+    | "consolidatedBalanceSheet"
+    | "consolidatedIncomeStatement";
+
 /**
- * A non-fatal data-quality note attached to a single annual report. Currently only
+ * A non-fatal data-quality note attached to a single annual report.
+ *
  * SCALING_REPAIRED: an amount carried a negative `decimals` (precision indicator)
  * but lacked the trailing zeros that precision implies — a sign the filer misused
  * `decimals` as a scale — so we multiplied it back up. Surfaced so the consumer
  * knows the value was adjusted and can sanity-check it.
+ *
+ * PRIOR_YEAR_MISMATCH: one or more amounts in this report differ from the
+ * comparative figures for the same period in the following year's report
+ * (typically a restatement). Attached to the report the figures are FOR.
  */
-export interface ReportWarning {
-    code: "SCALING_REPAIRED";
-    message: string;
-    repairedFields: Array<{
-        statement: "balanceSheet" | "incomeStatement" | "notes";
-        field: string;
-        originalValue: number;
-        repairedValue: number;
-        factor: number;
-    }>;
-}
+export type ReportWarning =
+    | {
+          code: "SCALING_REPAIRED";
+          message: string;
+          repairedFields: Array<{
+              statement: StatementName;
+              field: string;
+              originalValue: number;
+              repairedValue: number;
+              factor: number;
+          }>;
+      }
+    | {
+          code: "PRIOR_YEAR_MISMATCH";
+          message: string;
+          differences: Array<{
+              statement: StatementName;
+              field: string;
+              label: string;
+              /** The amount as stated in this report. */
+              value: number;
+              /** The comparative amount for the same period in the following year's report. */
+              valueInNextReport: number;
+          }>;
+      };
 
 export interface ÅRLTaxonomy {
     schema: string[];
@@ -155,6 +199,17 @@ export interface AnnualReport<T> {
     notes: Notes<T>;
     relatedEntities: RelatedEntity[];
     consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[];
+    /**
+     * Koncernregnskabet: the group's income statement and balance sheet, present
+     * when the filing carries facts in ConsolidatedMember contexts (i.e. the
+     * company prepares consolidated financial statements). The top-level
+     * statements remain the parent company's own (solo) figures. Null when the
+     * filing has no consolidated figures.
+     */
+    consolidated: {
+        incomeStatement: IncomeStatement<T>;
+        balancesheet: BalanceSheet<T>;
+    } | null;
     warnings: ReportWarning[];
 }
 

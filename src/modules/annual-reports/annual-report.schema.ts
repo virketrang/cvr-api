@@ -409,6 +409,14 @@ const consolidatedFinancialStatementsSchema = z.object({
     }),
 });
 
+const statementNameSchema = z.enum([
+    "balanceSheet",
+    "incomeStatement",
+    "notes",
+    "consolidatedBalanceSheet",
+    "consolidatedIncomeStatement",
+]);
+
 const annualReportSchema = z.object({
     reportingPeriod: z.object({
         reportingPeriodStartDate: z.string().openapi({
@@ -468,30 +476,69 @@ const annualReportSchema = z.object({
     }),
     warnings: z
         .array(
-            z.object({
-                code: z.literal("SCALING_REPAIRED").openapi({ example: "SCALING_REPAIRED" }),
-                message: z.string().openapi({
-                    description: "Menneskelæsbar (dansk) beskrivelse af justeringen.",
-                }),
-                repairedFields: z.array(
-                    z.object({
-                        statement: z.enum(["balanceSheet", "incomeStatement", "notes"]),
-                        field: z.string().openapi({ example: "assets" }),
-                        originalValue: z.number().openapi({ example: 247483 }),
-                        repairedValue: z.number().openapi({ example: 247483000 }),
-                        factor: z.number().openapi({ example: 1000 }),
+            z.discriminatedUnion("code", [
+                z.object({
+                    code: z.literal("SCALING_REPAIRED").openapi({ example: "SCALING_REPAIRED" }),
+                    message: z.string().openapi({
+                        description: "Menneskelæsbar (dansk) beskrivelse af justeringen.",
                     }),
-                ),
-            }),
+                    repairedFields: z.array(
+                        z.object({
+                            statement: statementNameSchema,
+                            field: z.string().openapi({ example: "assets" }),
+                            originalValue: z.number().openapi({ example: 247483 }),
+                            repairedValue: z.number().openapi({ example: 247483000 }),
+                            factor: z.number().openapi({ example: 1000 }),
+                        }),
+                    ),
+                }),
+                z.object({
+                    code: z.literal("PRIOR_YEAR_MISMATCH").openapi({ example: "PRIOR_YEAR_MISMATCH" }),
+                    message: z.string().openapi({
+                        description: "Menneskelæsbar (dansk) beskrivelse af afvigelsen.",
+                    }),
+                    differences: z.array(
+                        z.object({
+                            statement: statementNameSchema,
+                            field: z.string().openapi({ example: "profitLoss" }),
+                            label: z.string().openapi({ example: "Årets resultat" }),
+                            value: z.number().openapi({
+                                description: "Beløbet som angivet i denne årsrapport.",
+                                example: 989944,
+                            }),
+                            valueInNextReport: z.number().openapi({
+                                description:
+                                    "Sammenligningstallet for samme periode i den efterfølgende årsrapport.",
+                                example: 994444,
+                            }),
+                        }),
+                    ),
+                }),
+            ]),
         )
         .openapi({
             description:
                 "Datakvalitets-advarsler for denne årsrapport. 'SCALING_REPAIRED' betyder, at et eller flere " +
-                "beløb manglede de nuller, som deres decimals-angivelse tilsiger, og er ganget op — kontrollér tallene.",
+                "beløb manglede de nuller, som deres decimals-angivelse tilsiger, og er ganget op — kontrollér tallene. " +
+                "'PRIOR_YEAR_MISMATCH' betyder, at et eller flere beløb afviger fra sammenligningstallene for samme " +
+                "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse).",
             example: [],
         }),
     incomeStatement: incomeStatementSchema.partial(),
     balancesheet: balanceSheetSchema.partial(),
+    consolidated: z
+        .object({
+            incomeStatement: incomeStatementSchema.partial(),
+            balancesheet: balanceSheetSchema.partial(),
+        })
+        .nullable()
+        .openapi({
+            description:
+                "Koncernregnskabet: koncernens resultatopgørelse og balance, når årsrapporten indeholder et " +
+                "koncernregnskab. Felterne på øverste niveau er fortsat modervirksomhedens egne (solo) tal. " +
+                "Null hvis årsrapporten ikke indeholder et koncernregnskab.",
+            example: null,
+        }),
 });
 
 // Codes must stay in sync with shared/api-error.ts ErrorCode and the VBA ApiErrorCode list.
@@ -554,6 +601,7 @@ export const responseSchema = z.object({
                 warnings: [],
                 incomeStatement: {},
                 balancesheet: {},
+                consolidated: null,
             },
         ],
     }),

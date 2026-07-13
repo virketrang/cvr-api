@@ -1,12 +1,16 @@
 import environment from "../../environment.js";
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
 import type {
+    Account,
+    AnnualReport,
     AnnualReportResponse,
     BatchAnnualReportResponse,
     BatchAnnualReportResult,
     DanishBusinessRegistrationAccountingAPIResponse,
     ExtractResult,
+    PriorPeriodFigures,
     ReportSkip,
+    ReportWarning,
     UnprocessedAnnualReport,
 } from "./annual-report.types.js";
 
@@ -144,9 +148,9 @@ export default abstract class AnnualReportService {
                 };
             }
 
-            const report = xbrlDocument.extractTaxonomyData();
+            const { report, priorFigures } = xbrlDocument.extractTaxonomyData();
 
-            return { ok: true, report };
+            return { ok: true, report, priorFigures };
         } catch (error) {
             const appError = toAppError(error);
             return { ok: false, errorCode: appError.errorCode, message: appError.message };
@@ -165,7 +169,7 @@ export default abstract class AnnualReportService {
             };
         }
 
-        const annualReports: AnnualReportResponse["results"] = [];
+        const extracted: Array<{ report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }> = [];
         const skipped: ReportSkip[] = [];
 
         for (const xmlAnnualReport of xmlAnnualReports) {
@@ -173,7 +177,7 @@ export default abstract class AnnualReportService {
                 const result = AnnualReportService.extractAnnualReportFromXML(document.xmlText);
 
                 if (result.ok) {
-                    annualReports.push(result.report);
+                    extracted.push({ report: result.report, priorFigures: result.priorFigures });
                 } else {
                     // Record WHY this document was dropped, with the year + document URL,
                     // so the client can tell the user (e.g. "2023: unknown taxonomy").
@@ -191,6 +195,10 @@ export default abstract class AnnualReportService {
             }
         }
 
+        AnnualReportService.addPriorYearMismatchWarnings(extracted);
+
+        const annualReports = extracted.map((entry) => entry.report);
+
         annualReports.sort((a, b) => {
             const dateA = new Date(a.reportingPeriod.reportingPeriodEndDate);
             const dateB = new Date(b.reportingPeriod.reportingPeriodEndDate);
@@ -203,6 +211,102 @@ export default abstract class AnnualReportService {
             status: "success",
             skipped,
         };
+    }
+
+    /**
+     * Cross-checks every report against the following year's report: the figures a
+     * report states for its own period should reappear unchanged as that period's
+     * comparative figures in the next report. Any field where the two disagree
+     * (typically a restatement) is added as a PRIOR_YEAR_MISMATCH warning on the
+     * report the figures are FOR — e.g. 2022 figures restated in the 2023 report
+     * warn on the 2022 report.
+     */
+    private static addPriorYearMismatchWarnings(
+        extracted: Array<{ report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }>,
+    ): void {
+        type Difference = Extract<ReportWarning, { code: "PRIOR_YEAR_MISMATCH" }>["differences"][number];
+
+        const compareStatements = (
+            statement: Difference["statement"],
+            current: Partial<Record<string, Account>>,
+            comparative: Partial<Record<string, Account>>,
+        ): Difference[] => {
+            const differences: Difference[] = [];
+
+            for (const [field, account] of Object.entries(current)) {
+                const comparativeAccount = comparative[field];
+
+                // Only fields present in both reports can be compared; differing
+                // units would make the amounts incomparable, so skip those too.
+                if (
+                    account == null ||
+                    comparativeAccount == null ||
+                    (account.unit && comparativeAccount.unit && account.unit !== comparativeAccount.unit)
+                ) {
+                    continue;
+                }
+
+                if (account.value !== comparativeAccount.value) {
+                    differences.push({
+                        statement,
+                        field,
+                        label: account.label,
+                        value: account.value,
+                        valueInNextReport: comparativeAccount.value,
+                    });
+                }
+            }
+
+            return differences;
+        };
+
+        for (const entry of extracted) {
+            const endDate = entry.report.reportingPeriod.reportingPeriodEndDate;
+
+            // The next year's report is the one whose comparative (prior) period ends
+            // exactly where this report's own period ends.
+            const next = extracted.find((candidate) => candidate !== entry && candidate.priorFigures?.endDate === endDate);
+
+            if (!next?.priorFigures) continue;
+
+            const differences: Difference[] = [
+                ...compareStatements(
+                    "incomeStatement",
+                    entry.report.incomeStatement as unknown as Partial<Record<string, Account>>,
+                    next.priorFigures.incomeStatement as Partial<Record<string, Account>>,
+                ),
+                ...compareStatements(
+                    "balanceSheet",
+                    entry.report.balancesheet as unknown as Partial<Record<string, Account>>,
+                    next.priorFigures.balanceSheet as Partial<Record<string, Account>>,
+                ),
+            ];
+
+            if (entry.report.consolidated && next.priorFigures.consolidated) {
+                differences.push(
+                    ...compareStatements(
+                        "consolidatedIncomeStatement",
+                        entry.report.consolidated.incomeStatement as unknown as Partial<Record<string, Account>>,
+                        next.priorFigures.consolidated.incomeStatement as Partial<Record<string, Account>>,
+                    ),
+                    ...compareStatements(
+                        "consolidatedBalanceSheet",
+                        entry.report.consolidated.balancesheet as unknown as Partial<Record<string, Account>>,
+                        next.priorFigures.consolidated.balanceSheet as Partial<Record<string, Account>>,
+                    ),
+                );
+            }
+
+            if (differences.length > 0) {
+                entry.report.warnings.push({
+                    code: "PRIOR_YEAR_MISMATCH",
+                    message:
+                        "Et eller flere beløb i denne årsrapport afviger fra sammenligningstallene for samme " +
+                        "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse). Kontrollér tallene.",
+                    differences,
+                });
+            }
+        }
     }
 
     public static async getAnnualReportsBatch(cvrNumbers: number[]): Promise<BatchAnnualReportResponse> {
