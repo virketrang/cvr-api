@@ -397,29 +397,95 @@ export default class XBRLDocument {
         }
 
         const financialResults = xbrlRecord.filter((record) => {
-            // Keep only facts for the requested scope (see matchesScope) — unless
-            // dimensional facts are explicitly allowed, which bypasses the scope
-            // check entirely (used for notes). A null context is excluded.
-            return (
-                record.context != null &&
-                (record.context.endDate === date || record.context.instant === date) &&
-                ((allowDimensional && scope === "solo") || this.matchesScope(record.context, scope))
-            );
+            const context = record.context;
+            if (context == null || (context.endDate !== date && context.instant !== date)) return false;
+
+            // Dimensional facts allowed (used for notes): any dimensions are fine,
+            // but the ConsolidatedSoloDimension still decides which scope the fact
+            // belongs to — a solo note must not pick up koncern figures and vice versa.
+            if (allowDimensional) {
+                const isConsolidatedContext = context.dimensions.some(
+                    (d) => d.dimension === "ConsolidatedSoloDimension" && d.member === "ConsolidatedMember",
+                );
+                return scope === "consolidated" ? isConsolidatedContext : !isConsolidatedContext;
+            }
+
+            return this.matchesScope(context, scope);
         });
 
         if (financialResults.length === 0) {
             return null;
         }
 
+        // Statement facts: no non-scope dimensions ever match, so the first is the total.
+        if (!allowDimensional) {
+            return this.toAccount(financialResults[0]);
+        }
+
+        // Notes: a note figure (e.g. AmortisationOfIntangibleAssets) may be tagged
+        // either at entity level (no axis beyond the scope marker) OR only split per
+        // intangible-asset class on a dimension. Prefer the entity-level total; only
+        // when it is absent do we sum the per-class facts (one value per distinct
+        // member) to reconstruct the total. Both routes are unit-tagged, so the scale
+        // is unambiguous — unlike the free-text roll-forward note, which we never
+        // parse into a number.
+        const nonScopeDimensions = (record: NonNullable<XBRLRecord>[number]) =>
+            record.context!.dimensions.filter((d) => d.dimension !== "ConsolidatedSoloDimension");
+
+        const entityLevel = financialResults.filter((record) => nonScopeDimensions(record).length === 0);
+        if (entityLevel.length > 0) {
+            return this.toAccount(entityLevel[0]);
+        }
+
+        return this.sumDimensionalFacts(financialResults, nonScopeDimensions);
+    }
+
+    /** Turns one XBRL record into an account, parsing the integer value (null if non-numeric). */
+    private toAccount(record: NonNullable<XBRLRecord>[number]) {
         return {
-            value:
-                !financialResults[0].value || isNaN(parseInt(financialResults[0].value, 10))
-                    ? null
-                    : parseInt(financialResults[0].value, 10),
-            unit: financialResults[0].unit,
-            label: financialResults[0].label,
-            decimals: financialResults[0].decimals,
+            value: !record.value || isNaN(parseInt(record.value, 10)) ? null : parseInt(record.value, 10),
+            unit: record.unit,
+            label: record.label,
+            decimals: record.decimals,
         };
+    }
+
+    /**
+     * Sums a note figure that was only tagged per intangible-asset class (a
+     * dimensional roll-forward), reconstructing the entity total. Keeps one value
+     * per distinct dimension-member signature (so duplicate contexts can't
+     * double-count) and only sums facts sharing the first fact's unit. Returns null
+     * if no numeric value is present.
+     */
+    private sumDimensionalFacts(
+        records: NonNullable<XBRLRecord>,
+        nonScopeDimensions: (record: NonNullable<XBRLRecord>[number]) => XBRLContext["dimensions"],
+    ) {
+        const byMember = new Map<string, NonNullable<XBRLRecord>[number]>();
+        for (const record of records) {
+            const signature = nonScopeDimensions(record)
+                .map((d) => `${d.dimension}=${d.member}`)
+                .sort()
+                .join("|");
+            if (!byMember.has(signature)) byMember.set(signature, record);
+        }
+
+        const unit = [...byMember.values()][0]?.unit ?? null;
+        const decimals = [...byMember.values()][0]?.decimals ?? null;
+        const label = [...byMember.values()][0]?.label ?? "";
+
+        let total = 0;
+        let sawNumber = false;
+        for (const record of byMember.values()) {
+            if (record.unit !== unit) continue;
+            const parsed = record.value ? parseInt(record.value, 10) : NaN;
+            if (!isNaN(parsed)) {
+                total += parsed;
+                sawNumber = true;
+            }
+        }
+
+        return sawNumber ? { value: total, unit, label, decimals } : null;
     }
 
     /**
@@ -657,12 +723,22 @@ export default class XBRLDocument {
             reportingPeriod.reportingPeriodEndDate,
             "consolidated",
         );
+        const consolidatedNotes = buildStatement(
+            notesXBRLRecords as unknown as Record<string, XBRLRecord>,
+            "consolidatedNotes",
+            true,
+            reportingPeriod.reportingPeriodEndDate,
+            "consolidated",
+        );
         const hasConsolidated =
-            Object.keys(consolidatedBalanceSheet).length > 0 || Object.keys(consolidatedIncomeStatement).length > 0;
+            Object.keys(consolidatedBalanceSheet).length > 0 ||
+            Object.keys(consolidatedIncomeStatement).length > 0 ||
+            Object.keys(consolidatedNotes).length > 0;
         const consolidated = hasConsolidated
             ? {
                   incomeStatement: consolidatedIncomeStatement as unknown as IncomeStatement<Account>,
                   balancesheet: consolidatedBalanceSheet as unknown as BalanceSheet<Account>,
+                  notes: consolidatedNotes as unknown as Notes<Account>,
               }
             : null;
 
@@ -775,6 +851,10 @@ export default class XBRLDocument {
                 consolidatedFinancialStatements: consolidatedFinancialStatements,
                 consolidated: consolidated,
                 warnings: warnings,
+                // Filled by the validation engine (src/validation) after the
+                // company's full report list is assembled — some checks are
+                // cross-year and need every report.
+                validation: [],
             },
             priorFigures,
         };

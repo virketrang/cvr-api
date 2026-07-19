@@ -4,6 +4,7 @@
     "version": "1.0.1",
     "scripts": {
         "dev": "tsx watch src/index.ts --env-file=.env",
+        "test": "tsx --test src/validation/__tests__/*.test.ts",
         "build": "tsc && tsc-alias",
         "start": "node dist/index.js",
         "deploy": "gcloud run deploy bech-bruun-api --project=bech-bruun-api --source . --allow-unauthenticated"

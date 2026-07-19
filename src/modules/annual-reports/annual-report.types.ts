@@ -1,4 +1,5 @@
 import type { ErrorCode } from "../../utils/api-error.js";
+import type { ValidationFinding, ValidationSummary } from "../../validation/types.js";
 
 /**
  * A single annual-report document that could not be turned into a usable report,
@@ -130,6 +131,13 @@ export interface GroupEntityFromNotes {
     registeredOffice: string | null;
     legalForm: string | null;
     ownershipPercentage: number | null;
+    /**
+     * The share exactly as stated in the filing, BEFORE the fraction-vs-percent
+     * normalisation (a stated "1" becomes ownershipPercentage 100). Only set for
+     * structured facts; lets the SCL-003 validation detect filings that switch
+     * convention between years, where the normalisation may have guessed wrong.
+     */
+    ownershipPercentageAsReported?: number | null;
     votingRightsPercentage: number | null;
     /**
      * "structured" = the taxonomy's tagged related-entity facts;
@@ -171,7 +179,8 @@ export type StatementName =
     | "incomeStatement"
     | "notes"
     | "consolidatedBalanceSheet"
-    | "consolidatedIncomeStatement";
+    | "consolidatedIncomeStatement"
+    | "consolidatedNotes";
 
 /**
  * A non-fatal data-quality note attached to a single annual report.
@@ -244,6 +253,12 @@ export type AnnualReportResponse = {
     /** Set when status is "failed": the dominant reason nothing could be read. */
     errorCode?: ErrorCode;
     message?: string;
+    /**
+     * Aggregate of every report's `validation` findings (incl. the cross-year
+     * findings placed on the newest report). Advisory only — never affects
+     * `status` and never blocks a response.
+     */
+    validationSummary: ValidationSummary;
 };
 
 export interface AnnualReport<T> {
@@ -270,8 +285,17 @@ export interface AnnualReport<T> {
     consolidated: {
         incomeStatement: IncomeStatement<T>;
         balancesheet: BalanceSheet<T>;
+        notes: Notes<T>;
     } | null;
     warnings: ReportWarning[];
+    /**
+     * Advisory findings from the automatic control of the extracted figures
+     * (balance/result identities, cross-year continuity, sign and scale checks).
+     * Empty when everything reconciles. Cross-year findings sit on the NEWEST
+     * report with `period` naming the year they concern. Figures are never
+     * changed and a response is never blocked because of findings.
+     */
+    validation: ValidationFinding[];
 }
 
 export interface ReportingPeriod<T> {
@@ -688,6 +712,8 @@ export type BatchAnnualReportResult = {
     /** Set when the whole company failed (e.g. upstream unavailable). */
     errorCode?: ErrorCode;
     message?: string;
+    /** Aggregate of the company's validation findings — see AnnualReportResponse.validationSummary. */
+    validationSummary: ValidationSummary;
 };
 
 export type BatchAnnualReportResponse = {

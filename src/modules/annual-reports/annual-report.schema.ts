@@ -378,6 +378,17 @@ export const groupEntityFromNotesSchema = z.object({
             "typisk koncernens samlede (indirekte) andel; kan ikke skelnes fra direkte ejerandel.",
         example: 100,
     }),
+    ownershipPercentageAsReported: z
+        .number()
+        .nullable()
+        .optional()
+        .openapi({
+            description:
+                "Ejerandelen præcis som angivet i indberetningen, FØR normalisering af brøk vs. procent " +
+                "(en angivet '1' bliver til ownershipPercentage 100). Kun sat for strukturerede fakta; " +
+                "bruges af valideringskontrollen SCL-003 til at opdage inkonsistent angivelse på tværs af år.",
+            example: 1,
+        }),
     votingRightsPercentage: z.number().nullable().openapi({
         description: "Stemmeandel som angivet i noten, når den findes",
         example: null,
@@ -453,7 +464,65 @@ const statementNameSchema = z.enum([
     "notes",
     "consolidatedBalanceSheet",
     "consolidatedIncomeStatement",
+    "consolidatedNotes",
 ]);
+
+const validationFindingSchema = z.object({
+    id: z.string().openapi({
+        description: "Stabilt kontrol-id, fx 'BAL-001' (balancen stemmer) eller 'XCH-001' (egenkapitalens kontinuitet).",
+        example: "BAL-005",
+    }),
+    severity: z.enum(["error", "warning", "info"]).openapi({
+        description:
+            "Alvorlighed: 'error' = brud på en regnskabsidentitet (udtrækket er sandsynligvis forkert eller " +
+            "ufuldstændigt), 'warning' = afstemning der bør holde men har lovlige undtagelser, 'info' = rent " +
+            "opmærksomhedspunkt.",
+        example: "error",
+    }),
+    message: z.string().openapi({
+        description: "Dansk, brugervendt beskrivelse — kan vises 1:1 som note på en dosmerseddel.",
+        example:
+            "Sammentælling af immaterielle anlægsaktiver afviger 54.135.000 kr. fra summen af indberettede " +
+            "underposter (goodwill, acquiredTrademarks). Muligvis manglende underpost i udtrækket.",
+    }),
+    expected: z.number().optional().openapi({
+        description: "Det forventede beløb ifølge kontrollen.",
+        example: 100000000,
+    }),
+    actual: z.number().optional().openapi({
+        description: "Det faktisk indberettede beløb.",
+        example: 154135000,
+    }),
+    deviation: z.number().optional().openapi({
+        description: "Afvigelsen (actual − expected).",
+        example: 54135000,
+    }),
+    concepts: z.array(z.string()).optional().openapi({
+        description: "De involverede XBRL-koncepter.",
+        example: ["intangibleAssets", "goodwill", "acquiredTrademarks"],
+    }),
+    period: z.string().optional().openapi({
+        description:
+            "Den regnskabsperiode fundet vedrører ('2024-10-01/2025-09-30') — udfyldes altid ved " +
+            "periodespecifikke fund. Tværgående fund ligger på den nyeste årsrapport med dette felt sat.",
+        example: "2024-10-01/2025-09-30",
+    }),
+});
+
+const validationSummarySchema = z.object({
+    errors: z.number().int().openapi({
+        description: "Antal fund med severity 'error' på tværs af selskabets årsrapporter.",
+        example: 0,
+    }),
+    warnings: z.number().int().openapi({
+        description: "Antal fund med severity 'warning'.",
+        example: 1,
+    }),
+    infos: z.number().int().openapi({
+        description: "Antal fund med severity 'info'.",
+        example: 0,
+    }),
+});
 
 const annualReportSchema = z.object({
     reportingPeriod: z.object({
@@ -571,18 +640,39 @@ const annualReportSchema = z.object({
                 "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse).",
             example: [],
         }),
+    validation: z.array(validationFindingSchema).openapi({
+        description:
+            "Rådgivende fund fra den automatiske kontrol af de udtrukne regnskabstal (balance- og " +
+            "resultatidentiteter, kontinuitet mellem år, fortegns- og skalakontroller). Tom når alt stemmer. " +
+            "Kontrollerne ændrer aldrig tal og blokerer aldrig et svar. Tværgående fund (fx egenkapitalens " +
+            "kontinuitet) ligger på den NYESTE årsrapport med period-feltet sat til det år, fundet vedrører. " +
+            "Enkeltkontroller kan slås fra via miljøvariablen VALIDATION_DISABLED (fx 'SCL-002,SGN-002').",
+        example: [],
+    }),
     incomeStatement: incomeStatementSchema.partial(),
     balancesheet: balanceSheetSchema.partial(),
     consolidated: z
         .object({
             incomeStatement: incomeStatementSchema.partial(),
             balancesheet: balanceSheetSchema.partial(),
+            notes: z.record(z.string(), accountSchema).openapi({
+                description:
+                    "Noter til koncernregnskabet (fx amortisationOfIntangibleAssets — afskrivninger " +
+                    "af immaterielle aktiver), samme nøgler som notes på øverste niveau.",
+                example: {
+                    amortisationOfIntangibleAssets: {
+                        value: 34283000,
+                        unit: "DKK",
+                        label: "Afskrivninger af immaterielle aktiver",
+                    },
+                },
+            }),
         })
         .nullable()
         .openapi({
             description:
-                "Koncernregnskabet: koncernens resultatopgørelse og balance, når årsrapporten indeholder et " +
-                "koncernregnskab. Felterne på øverste niveau er fortsat modervirksomhedens egne (solo) tal. " +
+                "Koncernregnskabet: koncernens resultatopgørelse, balance og noter, når årsrapporten indeholder " +
+                "et koncernregnskab. Felterne på øverste niveau er fortsat modervirksomhedens egne (solo) tal. " +
                 "Null hvis årsrapporten ikke indeholder et koncernregnskab.",
             example: null,
         }),
@@ -660,6 +750,7 @@ export const responseSchema = z.object({
                 groupEntitiesFromNotes: [],
                 consolidatedFinancialStatements: [],
                 warnings: [],
+                validation: [],
                 incomeStatement: {},
                 balancesheet: {},
                 consolidated: null,
@@ -669,6 +760,12 @@ export const responseSchema = z.object({
     skipped: z.array(skipSchema).openapi({
         description: "Dokumenter der blev hentet, men ikke kunne læses (med årsag).",
         example: [],
+    }),
+    validationSummary: validationSummarySchema.openapi({
+        description:
+            "Sammentælling af alle valideringsfund på tværs af selskabets årsrapporter (inkl. de tværgående " +
+            "fund, som ligger på den nyeste rapports validation). Rådgivende — påvirker aldrig status.",
+        example: { errors: 0, warnings: 0, infos: 0 },
     }),
 });
 
@@ -716,6 +813,12 @@ const batchResultSchema = z.object({
     message: z.string().optional().openapi({
         description: "Fejlbesked, hvis status er 'error' eller 'failed'.",
         example: "Kunne ikke hente data fra CVR-registret.",
+    }),
+    validationSummary: validationSummarySchema.openapi({
+        description:
+            "Sammentælling af valideringsfundene for dette selskab på tværs af dets årsrapporter — se " +
+            "validation-feltet på den enkelte årsrapport for detaljerne.",
+        example: { errors: 0, warnings: 0, infos: 0 },
     }),
 });
 

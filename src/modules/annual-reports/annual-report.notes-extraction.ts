@@ -222,6 +222,7 @@ export function structuredRelatedEntitiesToGroupEntities(relatedEntities: Relate
                 registeredOffice: !isCountry ? place : null,
                 legalForm: entity.legalForm,
                 ownershipPercentage: percentage,
+                ownershipPercentageAsReported: entity.ownershipPercentage,
                 votingRightsPercentage: null,
                 source: "structured" as const,
                 sourceConcept: "RelatedEntityName",

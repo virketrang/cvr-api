@@ -18,6 +18,7 @@ import type {
 import { extractGroupEntities } from "./annual-report.notes-extraction.js";
 
 import XBRLDocument from "./annual-report.utils.js";
+import { parseDisabledChecks, runValidation, summarize } from "../../validation/registry.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
 import {
     basicAuthHeader,
@@ -251,6 +252,7 @@ export default abstract class AnnualReportService {
                 message:
                     "Der er endnu ikke offentliggjort nogen årsrapport for selskabet " +
                     "(fx fordi det er nystiftet, eller fordi første regnskabsår ikke er afsluttet).",
+                validationSummary: { errors: 0, warnings: 0, infos: 0 },
             };
         }
 
@@ -303,14 +305,22 @@ export default abstract class AnnualReportService {
                 skipped,
                 errorCode: dominant.errorCode,
                 message: dominant.message,
+                validationSummary: { errors: 0, warnings: 0, infos: 0 },
             };
         }
+
+        // Advisory validation of the extracted figures (balance/result identities,
+        // cross-year continuity, sign and scale checks). Runs after the full report
+        // list is sorted because some checks span years. Never changes any figure,
+        // never affects `status`, never blocks the response.
+        runValidation(annualReports, parseDisabledChecks(process.env.VALIDATION_DISABLED));
 
         return {
             results: annualReports,
             total: annualReports.length,
             status: "success",
             skipped,
+            validationSummary: summarize(annualReports),
         };
     }
 
@@ -447,6 +457,7 @@ export default abstract class AnnualReportService {
                             // the user why this company came back empty.
                             errorCode: response.errorCode,
                             message: response.message,
+                            validationSummary: response.validationSummary,
                         };
                     } catch (error) {
                         // Isolate the failure to this one company and carry a typed code
@@ -464,6 +475,7 @@ export default abstract class AnnualReportService {
                             skipped: [],
                             errorCode: appError.errorCode,
                             message: appError.message,
+                            validationSummary: { errors: 0, warnings: 0, infos: 0 },
                         };
                     }
                 }),
