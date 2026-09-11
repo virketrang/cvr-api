@@ -60,6 +60,7 @@ app.openapi(annualReports.route, annualReports.router);
 app.openapi(annualReports.batchRoute, annualReports.batchRouter);
 app.openapi(version.route, version.router);
 app.openapi(rateOfReturnOnCapital.route, rateOfReturnOnCapital.router);
+app.openapi(rateOfReturnOnCapital.atDateRoute, rateOfReturnOnCapital.atDateRouter);
 app.openapi(currencyRates.route, currencyRates.router);
 app.openapi(projectResolutions.route, projectResolutions.router);
 

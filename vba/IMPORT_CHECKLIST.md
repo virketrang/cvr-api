@@ -27,7 +27,11 @@ kvalifikationsregler, noter) ligger nu på serveren.
    - `Formula.cls` (beholder Link/Reset/Combine; `Create` er erstattet af
      `FromComponents`, som bygger "=a+b"-formlerne af serverens komponentlister)
    - `API.cls` (ny `ResolveProject`; `GetAnnualReports` er fjernet — batch-kaldet
-     sker nu server-side inde i project-resolutions)
+     sker nu server-side inde i project-resolutions; ny
+     `getRateOfReturnOnCapitalAtDate(dato)` mod
+     `GET /api/rate-of-return-on-capital/{dato}`, som giver den senest
+     offentliggjorte kapitalafkastsats på datoen — brug den i stedet for
+     `getRateOfReturnOnCapital()`, når der er indtastet en overdragelsesdato)
    - `Valuation.cls` (`AutoComplete`/`Populate*` erstattet af `Render`; alle
      ark-/konsoliderings-/eksport-rutiner er uændrede)
    - `PassiveAssetTest.cls` (`AutoComplete`/`Insert*` erstattet af `Render`;

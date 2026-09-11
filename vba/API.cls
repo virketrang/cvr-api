@@ -48,6 +48,54 @@ ErrorHandler:
   If Error.handle("API.getRateOfReturnOnCapital()", Err.description, Err.number, Erl) Then Resume CleanExit
 End Function
 
+' Den kapitalafkastsats, der var den senest offentliggjorte på overdragelsesdatoen
+' (boafgiftslovens § 12 a). Returnerer satsen som decimalbrøk (fx 0.04 for 4 %)
+' eller Null, hvis API'en ikke kunne svare — så 0 % ikke forveksles med en fejl.
+' Viser serverens forbehold (fx at registret mangler den nyeste sats) som toast.
+Function getRateOfReturnOnCapitalAtDate(ByVal transferDate As Date) As Variant
+    On Error GoTo ErrorHandler
+    Stack.Push "API.getRateOfReturnOnCapitalAtDate()"
+
+    Dim apiResponse As Variant
+    Dim value As String
+
+    getRateOfReturnOnCapitalAtDate = Null
+
+    Set apiResponse = HTTPClient.Fetch("/api/rate-of-return-on-capital/" & Format$(transferDate, "yyyy-mm-dd"))
+
+    If apiResponse Is Nothing Then
+        ' HTTPClient har allerede vist serverens fejlbesked (fx dato før registrets start).
+        GoTo CleanExit
+    End If
+
+    If Not IsObject(apiResponse) Or Not apiResponse.Exists("value") Then
+        Toast.Show "Fejl: API-svaret er ikke det forventede objekt {value, year, publishedAt, ...}.", "bottom-right", "error", 8
+        GoTo CleanExit
+    End If
+
+    value = CStr(apiResponse("value"))
+
+    If Not IsNumeric(value) Then
+        Toast.Show "Fejl: 'value'-feltet indeholder ikke et tal: " & value, "bottom-right", "error", 8
+        GoTo CleanExit
+    End If
+
+    If apiResponse.Exists("warning") Then
+        If Not IsNull(apiResponse("warning")) Then
+            Toast.Show CStr(apiResponse("warning")), "bottom-right", "warning", 12
+        End If
+    End If
+
+    getRateOfReturnOnCapitalAtDate = CDbl(Replace(value, ".", Application.DecimalSeparator))
+
+CleanExit:
+  Stack.Pop
+  Exit Function
+
+ErrorHandler:
+  If Error.handle("API.getRateOfReturnOnCapitalAtDate()", Err.description, Err.number, Erl) Then Resume CleanExit
+End Function
+
 Function getAPIVersion() As String
     On Error GoTo ErrorHandler
     Stack.Push "API.getAPIVersion()"

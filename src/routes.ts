@@ -22,6 +22,7 @@ const apiRoutes = [
     annualReports.route,
     annualReports.batchRoute,
     rateOfReturnOnCapital.route,
+    rateOfReturnOnCapital.atDateRoute,
     currencyRates.route,
     projectResolutions.route,
 ];

@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 
-import { parseFlexibleDate } from "../../utils/format-date.js";
+import { datePathParam } from "../../utils/date-param.js";
 
 export const paramSchema = z.object({
     currency: z
@@ -15,34 +15,7 @@ export const paramSchema = z.object({
                 required: true,
             },
         }),
-    date: z
-        .string()
-        .transform((value, ctx) => {
-            const isoDate = parseFlexibleDate(value);
-            if (!isoDate) {
-                ctx.addIssue({
-                    code: "custom",
-                    message:
-                        `Datoen "${value}" kunne ikke genkendes som en gyldig kalenderdato. ` +
-                        "Understøttede formater: 2025-12-31, 31-12-2025, 20251231, 31122025 " +
-                        "(også med / eller . som skilletegn) samt månedsnavne, fx '31. december 2025'.",
-                });
-                return z.NEVER;
-            }
-            return isoDate;
-        })
-        .openapi({
-            description:
-                "Datoen for den ønskede valutakurs. Accepterer ISO (2025-12-31), dansk (31-12-2025), " +
-                "kompakt (20251231, 31122025), - / . som skilletegn samt danske/engelske månedsnavne " +
-                "('31. december 2025'). Ved / eller mellemrum skal værdien URL-enkodes (%2F, %20).",
-            example: "2025-06-30",
-            param: {
-                in: "path",
-                name: "date",
-                required: true,
-            },
-        }),
+    date: datePathParam("date", "Datoen for den ønskede valutakurs.", "2025-06-30"),
 });
 
 export const responseSchema = z
