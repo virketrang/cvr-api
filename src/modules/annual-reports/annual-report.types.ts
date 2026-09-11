@@ -1,4 +1,5 @@
 import type { ErrorCode } from "../../utils/api-error.js";
+import type { ValidationFinding, ValidationSummary } from "../../validation/types.js";
 
 /**
  * A single annual-report document that could not be turned into a usable report,
@@ -18,8 +19,25 @@ export interface ReportSkip {
  * caller can report *why* a document was dropped.
  */
 export type ExtractResult =
-    | { ok: true; report: AnnualReport<Account> }
+    | { ok: true; report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }
     | { ok: false; errorCode: ErrorCode; message: string };
+
+/**
+ * The comparative (prior-period) figures a filing carries alongside its own
+ * period. Never exposed in the API response: they exist so the service can
+ * cross-check a year's report against the same year's comparatives in the
+ * following year's report and warn on differences (restatements).
+ */
+export interface PriorPeriodFigures {
+    /** End date of the preceding reporting period, i.e. the period the figures cover. */
+    endDate: string;
+    incomeStatement: Partial<IncomeStatement<Account>>;
+    balanceSheet: Partial<BalanceSheet<Account>>;
+    consolidated: {
+        incomeStatement: Partial<IncomeStatement<Account>>;
+        balanceSheet: Partial<BalanceSheet<Account>>;
+    } | null;
+}
 
 export interface UnprocessedAnnualReport {
     cvrNumber: number;
@@ -93,6 +111,59 @@ export interface RelatedEntity {
     ownershipPercentage: number | null;
 }
 
+/**
+ * A company mentioned in the NOTES of an annual report as (potentially) part of
+ * the corporate group — extracted from note tables or unstructured note text, not
+ * from structured XBRL facts. Especially valuable for foreign group members,
+ * which the CVR register cannot see.
+ *
+ * `ownershipPercentage` is only set when confidently parsed, and is the share as
+ * stated in the note — typically the group's TOTAL (i.e. usually indirect) share;
+ * direct vs indirect cannot be distinguished from the filing.
+ */
+export interface GroupEntityFromNotes {
+    name: string;
+    /** CVR number, when carried by structured facts. Always null for parsed note text/tables. */
+    cvrNumber: string | null;
+    /** Country, when the note states one (recognized against a curated list). */
+    country: string | null;
+    /** Registered office (hjemsted, typically a city), when stated and not a country. */
+    registeredOffice: string | null;
+    legalForm: string | null;
+    ownershipPercentage: number | null;
+    /**
+     * The share exactly as stated in the filing, BEFORE the fraction-vs-percent
+     * normalisation (a stated "1" becomes ownershipPercentage 100). Only set for
+     * structured facts; lets the SCL-003 validation detect filings that switch
+     * convention between years, where the normalisation may have guessed wrong.
+     */
+    ownershipPercentageAsReported?: number | null;
+    votingRightsPercentage: number | null;
+    /**
+     * "structured" = the taxonomy's tagged related-entity facts;
+     * "noteTable" = parsed from an XHTML table in a note;
+     * "noteText" = parsed from plain note text.
+     */
+    source: "structured" | "noteTable" | "noteText";
+    /** The XBRL concept the note was tagged as (concept names are unreliable; informational only). */
+    sourceConcept: string;
+    /** Whether the note sits in a consolidated (koncern) or solo context, when tagged. */
+    scope: "consolidated" | "solo" | null;
+    /**
+     * The entity's DIRECT parent, set only when it is certain: a solo-scope note —
+     * or any note in a filing without consolidated statements — describes the
+     * reporting company's own direct holdings, so the reporting company is the
+     * parent and `ownershipPercentage` is that parent's direct share. In
+     * consolidated-scope notes the listing covers the whole group, the direct
+     * parent cannot be determined, and this stays null (the percentage is then
+     * the group's total share).
+     */
+    parent: {
+        name: string | null;
+        cvrNumber: string | null;
+    } | null;
+}
+
 export interface ConsolidatedFinancialStatementsSubsidiary {
     cvrNumber: string | null;
     legalEntityIdentifier: string | null;
@@ -102,24 +173,52 @@ export interface ConsolidatedFinancialStatementsSubsidiary {
     placeWhereConsolidatedFinancialStatementsMayBeObtained: string | null;
 }
 
+/** Which statement of the report a warning entry points into. */
+export type StatementName =
+    | "balanceSheet"
+    | "incomeStatement"
+    | "notes"
+    | "consolidatedBalanceSheet"
+    | "consolidatedIncomeStatement"
+    | "consolidatedNotes";
+
 /**
- * A non-fatal data-quality note attached to a single annual report. Currently only
+ * A non-fatal data-quality note attached to a single annual report.
+ *
  * SCALING_REPAIRED: an amount carried a negative `decimals` (precision indicator)
  * but lacked the trailing zeros that precision implies — a sign the filer misused
  * `decimals` as a scale — so we multiplied it back up. Surfaced so the consumer
  * knows the value was adjusted and can sanity-check it.
+ *
+ * PRIOR_YEAR_MISMATCH: one or more amounts in this report differ from the
+ * comparative figures for the same period in the following year's report
+ * (typically a restatement). Attached to the report the figures are FOR.
  */
-export interface ReportWarning {
-    code: "SCALING_REPAIRED";
-    message: string;
-    repairedFields: Array<{
-        statement: "balanceSheet" | "incomeStatement" | "notes";
-        field: string;
-        originalValue: number;
-        repairedValue: number;
-        factor: number;
-    }>;
-}
+export type ReportWarning =
+    | {
+          code: "SCALING_REPAIRED";
+          message: string;
+          repairedFields: Array<{
+              statement: StatementName;
+              field: string;
+              originalValue: number;
+              repairedValue: number;
+              factor: number;
+          }>;
+      }
+    | {
+          code: "PRIOR_YEAR_MISMATCH";
+          message: string;
+          differences: Array<{
+              statement: StatementName;
+              field: string;
+              label: string;
+              /** The amount as stated in this report. */
+              value: number;
+              /** The comparative amount for the same period in the following year's report. */
+              valueInNextReport: number;
+          }>;
+      };
 
 export interface ÅRLTaxonomy {
     schema: string[];
@@ -141,10 +240,25 @@ export interface ÅRLExtract {
 
 export type AnnualReportResponse = {
     total: number;
+    /**
+     * "success" = at least one report parsed (or none were filed at all);
+     * "failed" = filings exist but not a single document could be read — see
+     * errorCode/message for the dominant reason (typically UNKNOWN_TAXONOMY for
+     * IFRS/ESEF filers).
+     */
     status: "failed" | "success" | "error";
     results: Array<AnnualReport<Account>>;
     /** Documents that were fetched but could not be parsed into a usable report. */
     skipped: ReportSkip[];
+    /** Set when status is "failed": the dominant reason nothing could be read. */
+    errorCode?: ErrorCode;
+    message?: string;
+    /**
+     * Aggregate of every report's `validation` findings (incl. the cross-year
+     * findings placed on the newest report). Advisory only — never affects
+     * `status` and never blocks a response.
+     */
+    validationSummary: ValidationSummary;
 };
 
 export interface AnnualReport<T> {
@@ -153,9 +267,35 @@ export interface AnnualReport<T> {
     balancesheet: BalanceSheet<T>;
     incomeStatement: IncomeStatement<T>;
     notes: Notes<T>;
-    relatedEntities: RelatedEntity[];
+    /**
+     * Companies mentioned in this report as (potentially) part of the corporate
+     * group — the taxonomy's structured related-entity facts merged with entities
+     * parsed from note tables/text, incl. foreign members invisible to the CVR
+     * register. See GroupEntityFromNotes for parent/ownership semantics.
+     */
+    groupEntitiesFromNotes: GroupEntityFromNotes[];
     consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[];
+    /**
+     * Koncernregnskabet: the group's income statement and balance sheet, present
+     * when the filing carries facts in ConsolidatedMember contexts (i.e. the
+     * company prepares consolidated financial statements). The top-level
+     * statements remain the parent company's own (solo) figures. Null when the
+     * filing has no consolidated figures.
+     */
+    consolidated: {
+        incomeStatement: IncomeStatement<T>;
+        balancesheet: BalanceSheet<T>;
+        notes: Notes<T>;
+    } | null;
     warnings: ReportWarning[];
+    /**
+     * Advisory findings from the automatic control of the extracted figures
+     * (balance/result identities, cross-year continuity, sign and scale checks).
+     * Empty when everything reconciles. Cross-year findings sit on the NEWEST
+     * report with `period` naming the year they concern. Figures are never
+     * changed and a response is never blocked because of findings.
+     */
+    validation: ValidationFinding[];
 }
 
 export interface ReportingPeriod<T> {
@@ -572,6 +712,8 @@ export type BatchAnnualReportResult = {
     /** Set when the whole company failed (e.g. upstream unavailable). */
     errorCode?: ErrorCode;
     message?: string;
+    /** Aggregate of the company's validation findings — see AnnualReportResponse.validationSummary. */
+    validationSummary: ValidationSummary;
 };
 
 export type BatchAnnualReportResponse = {

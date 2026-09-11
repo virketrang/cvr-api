@@ -88,8 +88,15 @@ function requestBody(
     } as ProjectResolutionRequestBody;
 }
 
-function batchResponse(results: BatchAnnualReportResponse["results"]): BatchAnnualReportResponse {
-    return { total: results.length, status: "success", results };
+type BatchResult = BatchAnnualReportResponse["results"][number];
+
+/** Builds a batch response; the advisory validation summary defaults to "nothing found". */
+function batchResponse(results: Array<Omit<BatchResult, "validationSummary"> & Partial<Pick<BatchResult, "validationSummary">>>): BatchAnnualReportResponse {
+    return {
+        total: results.length,
+        status: "success",
+        results: results.map((result) => ({ validationSummary: { errors: 0, warnings: 0, infos: 0 }, ...result })),
+    };
 }
 
 function makeReport(endYear: number, balancesheet: Record<string, number | null> = { equity: 100 }) {

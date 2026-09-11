@@ -8,15 +8,18 @@ import type {
     FilteredRecord,
     IncomeStatement,
     Notes,
+    PriorPeriodFigures,
     RelatedEntity,
     ReportingPeriod,
     ReportWarning,
+    StatementName,
     TaxonomyFact,
     XBRLContext,
     XBRLRecord,
 } from "./annual-report.types.js";
 
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
+import { extractGroupEntities } from "./annual-report.notes-extraction.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
@@ -84,9 +87,12 @@ export default class XBRLDocument {
         const elements = referenceElement ? Array.from(referenceElement.getElementsByTagName("*")) : this.elements;
 
         if (prefix) {
+            // Lowercase the prefix too: some filings declare mixed-case prefixes
+            // (e.g. "EOGS_202050000" for gsd), and the element tag names are compared
+            // in lowercase.
             const prefixedTagName = Array.isArray(prefix)
-                ? prefix.map((p) => `${p}:${lowerCaseTagName}`)
-                : `${prefix}:${lowerCaseTagName}`;
+                ? prefix.map((p) => `${p.toLowerCase()}:${lowerCaseTagName}`)
+                : `${prefix.toLowerCase()}:${lowerCaseTagName}`;
 
             return elements.filter(
                 (element) =>
@@ -98,7 +104,7 @@ export default class XBRLDocument {
         return this.prefix
             ? elements.filter(
                   (element) =>
-                      element.tagName.toLowerCase() === `${this.prefix}:${lowerCaseTagName}` ||
+                      element.tagName.toLowerCase() === `${this.prefix!.toLowerCase()}:${lowerCaseTagName}` ||
                       element.tagName.toLowerCase() === lowerCaseTagName,
               )
             : elements.filter((element) => element.tagName.toLowerCase() === lowerCaseTagName);
@@ -218,8 +224,8 @@ export default class XBRLDocument {
 
         const prefixedTagNames = prefix
             ? Array.isArray(prefix)
-                ? prefix.map((p) => `${p}:${lowerCaseAttributeName}`)
-                : [`${prefix}:${lowerCaseAttributeName}`]
+                ? prefix.map((p) => `${p.toLowerCase()}:${lowerCaseAttributeName}`)
+                : [`${prefix.toLowerCase()}:${lowerCaseAttributeName}`]
             : [lowerCaseAttributeName];
 
         for (let i = 0; i < referenceElement.attributes.length; i++) {
@@ -271,7 +277,7 @@ export default class XBRLDocument {
 
         return this.elements.filter((element) => {
             const tagName = element.tagName.toLowerCase();
-            return namespaces.some((namespace) => tagName.startsWith(`${namespace}:`));
+            return namespaces.some((namespace) => tagName.startsWith(`${namespace.toLowerCase()}:`));
         });
     }
 
@@ -364,34 +370,122 @@ export default class XBRLDocument {
         return xbrlRecord;
     }
 
-    public createAccountFromXBRLRecord(xbrlRecord: XBRLRecord, date: string, allowDimensional: boolean = false) {
+    /**
+     * True when a context belongs to the requested reporting scope. The Danish
+     * taxonomy separates the parent's own figures from the group's via
+     * ConsolidatedSoloDimension: consolidated (koncern) facts carry
+     * ConsolidatedMember, solo facts carry either no dimensions at all or an
+     * explicit SoloMember.
+     */
+    private matchesScope(context: XBRLContext, scope: "solo" | "consolidated"): boolean {
+        const isOnly = (member: string) =>
+            context.dimensions.length === 1 &&
+            context.dimensions[0].dimension === "ConsolidatedSoloDimension" &&
+            context.dimensions[0].member === member;
+
+        return scope === "consolidated" ? isOnly("ConsolidatedMember") : context.dimensions.length === 0 || isOnly("SoloMember");
+    }
+
+    public createAccountFromXBRLRecord(
+        xbrlRecord: XBRLRecord,
+        date: string,
+        allowDimensional: boolean = false,
+        scope: "solo" | "consolidated" = "solo",
+    ) {
         if (!xbrlRecord || !Array.isArray(xbrlRecord)) {
             return null;
         }
 
         const financialResults = xbrlRecord.filter((record) => {
-            // Unless dimensional facts are explicitly allowed, keep only the entity-level
-            // total — a context with no dimensions of any kind (explicit OR typed). A null
-            // context is excluded (`undefined === 0` is false), as before.
-            return (
-                (allowDimensional || record.context?.dimensions.length === 0) &&
-                (record.context?.endDate === date || record.context?.instant === date)
-            );
+            const context = record.context;
+            if (context == null || (context.endDate !== date && context.instant !== date)) return false;
+
+            // Dimensional facts allowed (used for notes): any dimensions are fine,
+            // but the ConsolidatedSoloDimension still decides which scope the fact
+            // belongs to — a solo note must not pick up koncern figures and vice versa.
+            if (allowDimensional) {
+                const isConsolidatedContext = context.dimensions.some(
+                    (d) => d.dimension === "ConsolidatedSoloDimension" && d.member === "ConsolidatedMember",
+                );
+                return scope === "consolidated" ? isConsolidatedContext : !isConsolidatedContext;
+            }
+
+            return this.matchesScope(context, scope);
         });
 
         if (financialResults.length === 0) {
             return null;
         }
 
+        // Statement facts: no non-scope dimensions ever match, so the first is the total.
+        if (!allowDimensional) {
+            return this.toAccount(financialResults[0]);
+        }
+
+        // Notes: a note figure (e.g. AmortisationOfIntangibleAssets) may be tagged
+        // either at entity level (no axis beyond the scope marker) OR only split per
+        // intangible-asset class on a dimension. Prefer the entity-level total; only
+        // when it is absent do we sum the per-class facts (one value per distinct
+        // member) to reconstruct the total. Both routes are unit-tagged, so the scale
+        // is unambiguous — unlike the free-text roll-forward note, which we never
+        // parse into a number.
+        const nonScopeDimensions = (record: NonNullable<XBRLRecord>[number]) =>
+            record.context!.dimensions.filter((d) => d.dimension !== "ConsolidatedSoloDimension");
+
+        const entityLevel = financialResults.filter((record) => nonScopeDimensions(record).length === 0);
+        if (entityLevel.length > 0) {
+            return this.toAccount(entityLevel[0]);
+        }
+
+        return this.sumDimensionalFacts(financialResults, nonScopeDimensions);
+    }
+
+    /** Turns one XBRL record into an account, parsing the integer value (null if non-numeric). */
+    private toAccount(record: NonNullable<XBRLRecord>[number]) {
         return {
-            value:
-                !financialResults[0].value || isNaN(parseInt(financialResults[0].value, 10))
-                    ? null
-                    : parseInt(financialResults[0].value, 10),
-            unit: financialResults[0].unit,
-            label: financialResults[0].label,
-            decimals: financialResults[0].decimals,
+            value: !record.value || isNaN(parseInt(record.value, 10)) ? null : parseInt(record.value, 10),
+            unit: record.unit,
+            label: record.label,
+            decimals: record.decimals,
         };
+    }
+
+    /**
+     * Sums a note figure that was only tagged per intangible-asset class (a
+     * dimensional roll-forward), reconstructing the entity total. Keeps one value
+     * per distinct dimension-member signature (so duplicate contexts can't
+     * double-count) and only sums facts sharing the first fact's unit. Returns null
+     * if no numeric value is present.
+     */
+    private sumDimensionalFacts(
+        records: NonNullable<XBRLRecord>,
+        nonScopeDimensions: (record: NonNullable<XBRLRecord>[number]) => XBRLContext["dimensions"],
+    ) {
+        const byMember = new Map<string, NonNullable<XBRLRecord>[number]>();
+        for (const record of records) {
+            const signature = nonScopeDimensions(record)
+                .map((d) => `${d.dimension}=${d.member}`)
+                .sort()
+                .join("|");
+            if (!byMember.has(signature)) byMember.set(signature, record);
+        }
+
+        const unit = [...byMember.values()][0]?.unit ?? null;
+        const decimals = [...byMember.values()][0]?.decimals ?? null;
+        const label = [...byMember.values()][0]?.label ?? "";
+
+        let total = 0;
+        let sawNumber = false;
+        for (const record of byMember.values()) {
+            if (record.unit !== unit) continue;
+            const parsed = record.value ? parseInt(record.value, 10) : NaN;
+            if (!isNaN(parsed)) {
+                total += parsed;
+                sawNumber = true;
+            }
+        }
+
+        return sawNumber ? { value: total, unit, label, decimals } : null;
     }
 
     /**
@@ -459,7 +553,55 @@ export default class XBRLDocument {
         return entityOrder.map((signature) => byEntity.get(signature)!);
     }
 
-    public extractTaxonomyData(): AnnualReport<Account> {
+    /**
+     * The end date of the reporting period preceding this filing's own — the
+     * period its comparative figures cover. Declared gsd facts are preferred
+     * ("PredingReportingPeriodEndDate" is the taxonomy's official spelling; the
+     * corrected spelling is tried too); otherwise it falls back to the day before
+     * the reporting period starts.
+     */
+    private getPriorPeriodEndDate(reportingPeriodStartDate: string): string | null {
+        for (const name of ["PredingReportingPeriodEndDate", "PrecedingReportingPeriodEndDate"]) {
+            const records = this.extractTaxonomyField({
+                name,
+                namespace: "http://xbrl.dcca.dk/gsd",
+                label: "Foregående regnskabsperiodes slutdato",
+            });
+            const value = records?.[0]?.value;
+            if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+        }
+
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(reportingPeriodStartDate)) return null;
+
+        const dayBefore = new Date(`${reportingPeriodStartDate}T00:00:00Z`);
+        dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+        return dayBefore.toISOString().slice(0, 10);
+    }
+
+    /**
+     * The structured related-entity facts (fsa:RelatedEntityName + typed dimension)
+     * for the given reporting period — the tagged version of the kapitalandele
+     * note. Public so the corporate-group enrichment can extract these without
+     * running the full statement extraction.
+     */
+    public extractRelatedEntities(reportingPeriodEndDate: string): RelatedEntity[] {
+        return this.extractDimensionalGroup(ÅRL_TAXONOMY.body.informationOnRelatedEntities, reportingPeriodEndDate)
+            .map((group) => ({
+                cvrNumber: group.identificationNumberCvrOfRelatedEntity?.value ?? null,
+                legalEntityIdentifier: group.legalEntityIdentifierOfRelatedEntity?.value ?? null,
+                pNumber: group.identificationNumberPnrOfRelatedEntity?.value ?? null,
+                name: group.relatedEntityName?.value ?? null,
+                registeredOffice: group.relatedEntityRegisteredOffice?.value ?? null,
+                legalForm: group.relatedEntityLegalForm?.value ?? null,
+                ownershipPercentage:
+                    group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity?.value != null
+                        ? parseFloat(group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity.value)
+                        : null,
+            }))
+            .filter((entity) => Object.values(entity).some((value) => value !== null));
+    }
+
+    public extractTaxonomyData(): { report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null } {
         const reportingPeriodXBRLRecords = {} as ReportingPeriod<XBRLRecord>;
         const notesXBRLRecords = {} as Notes<XBRLRecord>;
         const incomeStatementXBRLRecords = {} as IncomeStatement<XBRLRecord>;
@@ -517,28 +659,30 @@ export default class XBRLDocument {
 
         // Build each statement's accounts, repairing the "decimals as scale" malformation
         // per fact (see repairScaling) and collecting every repair into one warning.
-        const repairedFields: ReportWarning["repairedFields"] = [];
+        // Prior-period repairs go into a discarded sink: they describe the NEXT year's
+        // comparatives and must not surface as warnings on this report.
+        type RepairedFields = Extract<ReportWarning, { code: "SCALING_REPAIRED" }>["repairedFields"];
+        const repairedFields: RepairedFields = [];
 
         const buildStatement = (
             records: Record<string, XBRLRecord>,
-            statement: "balanceSheet" | "incomeStatement" | "notes",
+            statement: StatementName,
             allowDimensional: boolean,
+            date: string = reportingPeriod.reportingPeriodEndDate,
+            scope: "solo" | "consolidated" = "solo",
+            sink: RepairedFields = repairedFields,
         ): Record<string, Account> => {
             const result: Record<string, Account> = {};
 
             for (const [key, record] of Object.entries(records)) {
-                const account = this.createAccountFromXBRLRecord(
-                    record,
-                    reportingPeriod.reportingPeriodEndDate,
-                    allowDimensional,
-                );
+                const account = this.createAccountFromXBRLRecord(record, date, allowDimensional, scope);
 
                 if (account === null) continue;
 
                 const { account: repaired, repair } = this.repairScaling(account);
 
                 if (repair) {
-                    repairedFields.push({ statement, field: key, ...repair });
+                    sink.push({ statement, field: key, ...repair });
                 }
 
                 result[key] = repaired as Account;
@@ -563,6 +707,98 @@ export default class XBRLDocument {
             false,
         ) as unknown as IncomeStatement<Account>;
 
+        // Koncernregnskabet: the same taxonomy fields valued in ConsolidatedMember
+        // contexts. Only present when the filing actually carries such facts.
+        const consolidatedBalanceSheet = buildStatement(
+            balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
+            "consolidatedBalanceSheet",
+            false,
+            reportingPeriod.reportingPeriodEndDate,
+            "consolidated",
+        );
+        const consolidatedIncomeStatement = buildStatement(
+            incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
+            "consolidatedIncomeStatement",
+            false,
+            reportingPeriod.reportingPeriodEndDate,
+            "consolidated",
+        );
+        const consolidatedNotes = buildStatement(
+            notesXBRLRecords as unknown as Record<string, XBRLRecord>,
+            "consolidatedNotes",
+            true,
+            reportingPeriod.reportingPeriodEndDate,
+            "consolidated",
+        );
+        const hasConsolidated =
+            Object.keys(consolidatedBalanceSheet).length > 0 ||
+            Object.keys(consolidatedIncomeStatement).length > 0 ||
+            Object.keys(consolidatedNotes).length > 0;
+        const consolidated = hasConsolidated
+            ? {
+                  incomeStatement: consolidatedIncomeStatement as unknown as IncomeStatement<Account>,
+                  balancesheet: consolidatedBalanceSheet as unknown as BalanceSheet<Account>,
+                  notes: consolidatedNotes as unknown as Notes<Account>,
+              }
+            : null;
+
+        // Comparative figures for the preceding period, used by the service to
+        // cross-check the previous year's report. Repairs are discarded (see above).
+        const priorEndDate = this.getPriorPeriodEndDate(reportingPeriod.reportingPeriodStartDate);
+        let priorFigures: PriorPeriodFigures | null = null;
+
+        if (priorEndDate) {
+            const priorSink: RepairedFields = [];
+            const priorBalanceSheet = buildStatement(
+                balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
+                "balanceSheet",
+                false,
+                priorEndDate,
+                "solo",
+                priorSink,
+            );
+            const priorIncomeStatement = buildStatement(
+                incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
+                "incomeStatement",
+                false,
+                priorEndDate,
+                "solo",
+                priorSink,
+            );
+            const priorConsolidatedBalanceSheet = buildStatement(
+                balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
+                "consolidatedBalanceSheet",
+                false,
+                priorEndDate,
+                "consolidated",
+                priorSink,
+            );
+            const priorConsolidatedIncomeStatement = buildStatement(
+                incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
+                "consolidatedIncomeStatement",
+                false,
+                priorEndDate,
+                "consolidated",
+                priorSink,
+            );
+
+            const hasPriorConsolidated =
+                Object.keys(priorConsolidatedBalanceSheet).length > 0 ||
+                Object.keys(priorConsolidatedIncomeStatement).length > 0;
+
+            priorFigures = {
+                endDate: priorEndDate,
+                incomeStatement: priorIncomeStatement,
+                balanceSheet: priorBalanceSheet,
+                consolidated: hasPriorConsolidated
+                    ? {
+                          incomeStatement: priorConsolidatedIncomeStatement,
+                          balanceSheet: priorConsolidatedBalanceSheet,
+                      }
+                    : null,
+            };
+        }
+
         const warnings: ReportWarning[] = [];
         if (repairedFields.length > 0) {
             warnings.push({
@@ -574,23 +810,7 @@ export default class XBRLDocument {
             });
         }
 
-        const relatedEntities: RelatedEntity[] = this.extractDimensionalGroup(
-            ÅRL_TAXONOMY.body.informationOnRelatedEntities,
-            reportingPeriod.reportingPeriodEndDate,
-        )
-            .map((group) => ({
-                cvrNumber: group.identificationNumberCvrOfRelatedEntity?.value ?? null,
-                legalEntityIdentifier: group.legalEntityIdentifierOfRelatedEntity?.value ?? null,
-                pNumber: group.identificationNumberPnrOfRelatedEntity?.value ?? null,
-                name: group.relatedEntityName?.value ?? null,
-                registeredOffice: group.relatedEntityRegisteredOffice?.value ?? null,
-                legalForm: group.relatedEntityLegalForm?.value ?? null,
-                ownershipPercentage:
-                    group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity?.value != null
-                        ? parseFloat(group.shareHeldByEntityOrConsolidatedEnterprisesInRelatedEntity.value)
-                        : null,
-            }))
-            .filter((entity) => Object.values(entity).some((value) => value !== null));
+        const groupEntitiesFromNotes = extractGroupEntities(this, reportingPeriod.reportingPeriodEndDate);
 
         const consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[] =
             this.extractDimensionalGroup(
@@ -621,14 +841,22 @@ export default class XBRLDocument {
             null;
 
         return {
-            reportingPeriod: reportingPeriod,
-            unit: unit,
-            incomeStatement: incomeStatement,
-            balancesheet: balanceSheet,
-            notes: notes,
-            relatedEntities: relatedEntities,
-            consolidatedFinancialStatements: consolidatedFinancialStatements,
-            warnings: warnings,
+            report: {
+                reportingPeriod: reportingPeriod,
+                unit: unit,
+                incomeStatement: incomeStatement,
+                balancesheet: balanceSheet,
+                notes: notes,
+                groupEntitiesFromNotes: groupEntitiesFromNotes,
+                consolidatedFinancialStatements: consolidatedFinancialStatements,
+                consolidated: consolidated,
+                warnings: warnings,
+                // Filled by the validation engine (src/validation) after the
+                // company's full report list is assembled — some checks are
+                // cross-year and need every report.
+                validation: [],
+            },
+            priorFigures,
         };
     }
 }

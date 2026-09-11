@@ -11,6 +11,7 @@ import chalk from "chalk";
 import environment from "./environment.js";
 import endpoints, { baseUrl } from "./routes.js";
 import { ErrorCode, toAppError, type ApiErrorBody } from "./utils/api-error.js";
+import { rateLimit } from "./utils/rate-limit.js";
 
 import * as corporateGroups from "./modules/corporate-group-structures/corporate-group.controller.js";
 import * as annualReports from "./modules/annual-reports/annual-report.controller.js";
@@ -20,39 +21,47 @@ import * as currencyRates from "./modules/currency-rates/currency-rates.controll
 import * as projectResolutions from "./modules/project-resolutions/project-resolution.controller.js";
 
 const app = new OpenAPIHono({
-    // Request-validation failures must speak the same structured error language as
-    // everything else (ApiErrorBody with an errorCode the VBA client can switch on)
-    // instead of zod-openapi's default raw ZodError body.
     defaultHook: (result, ctx) => {
         if (!result.success) {
+            const issue = result.error.issues[0];
+            // A bad CVR number keeps the INVALID_CVR code the Excel client already
+            // switches on; every other validation failure is INVALID_INPUT.
+            const isCvr = issue?.path.some((segment) => String(segment).toLowerCase().includes("cvr")) ?? false;
             const body: ApiErrorBody = {
                 status: "error",
-                errorCode: ErrorCode.INVALID_INPUT,
-                message: result.error.issues[0]?.message ?? "Ugyldigt input.",
+                errorCode: isCvr ? ErrorCode.INVALID_CVR : ErrorCode.INVALID_INPUT,
+                message: issue?.message ?? "Ugyldigt input.",
             };
             return ctx.json(body, 422);
         }
     },
 });
 
-// Enable CORS for all routes
 app.use("*", cors());
 
-// Protect every /api/* endpoint. NOTE: the path MUST be "/api/*" — Hono's use()
-// matches "/api" as an exact path only, so without the wildcard the auth check
-// never runs for the actual endpoints.
-// `some(...)` passes if EITHER scheme succeeds: a bearer API_KEY, or basic auth
-// with the DOCUMENTATION_* credentials.
+// Declare the charset explicitly on JSON responses. The bodies are UTF-8, but without
+// "charset=utf-8" in the header several common consumers (Excel/Power Query, PHP, older
+// Java HTTP clients) fall back to ISO-8859-1 and mangle Æ/Ø/Å in company names.
+app.use("*", async (ctx, next) => {
+    await next();
+    const contentType = ctx.res.headers.get("content-type");
+    if (contentType?.startsWith("application/json") && !contentType.includes("charset")) {
+        ctx.res.headers.set("content-type", "application/json; charset=utf-8");
+    }
+});
+
 app.use(
     "/api/*",
     some(
         bearerAuth({ token: environment.API_KEY }),
         basicAuth({
-            username: environment.DOCUMENTATION_USERNAME,
-            password: environment.DOCUMENTATION_PASSWORD,
+            username: environment.API_USERNAME,
+            password: environment.API_PASSWORD,
         }),
     ),
 );
+
+app.use("/api/*", rateLimit());
 
 app.openapi(corporateGroups.route, corporateGroups.router);
 app.openapi(corporateGroups.flattenedRoute, corporateGroups.flattenedRouter);
@@ -92,20 +101,16 @@ app.notFound((ctx) => {
 });
 
 app.onError((err, ctx) => {
-    // A custom onError fully replaces Hono's default handler, which returns
-    // err.getResponse() for HTTPExceptions. Preserve that so framework-thrown
-    // exceptions — notably the bearer/basic auth 401s with their WWW-Authenticate
-    // header — return correctly instead of being flattened into a generic 500.
     if (err instanceof HTTPException) {
         return err.getResponse();
     }
 
-    // Every other error — AppErrors thrown by services/controllers as well as
-    // unexpected ones — is normalized to the shared ApiErrorBody shape here, so
-    // the errorCode contract holds without per-controller try/catch wrappers.
     const appError = toAppError(err);
 
-    console.error(`[${appError.errorCode}] ${appError.message}`, err instanceof Error && err.stack ? `\n${err.stack}` : "");
+    console.error(
+        `[${appError.errorCode}] ${appError.message}`,
+        err instanceof Error && err.stack ? `\n${err.stack}` : err,
+    );
 
     const body: ApiErrorBody = {
         status: "error",
@@ -113,7 +118,7 @@ app.onError((err, ctx) => {
         message: appError.message,
     };
 
-    return ctx.json(body, appError.httpStatus as 404 | 422 | 500 | 503);
+    return ctx.json(body, appError.httpStatus as 404 | 422 | 429 | 500 | 503);
 });
 
 serve(

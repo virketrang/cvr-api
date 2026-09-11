@@ -20,6 +20,7 @@ export const ErrorCode = {
     GROUP_TOO_LARGE: "GROUP_TOO_LARGE", // more companies than the workbook has sheets
     TOO_MANY_PASSIVE_COMPANIES: "TOO_MANY_PASSIVE_COMPANIES", // passive-test capacity exceeded
     INVALID_SUCCESSION_MODE: "INVALID_SUCCESSION_MODE", // unknown succession-period label
+    RATE_LIMITED: "RATE_LIMITED", // too many requests; retry after the window resets
 
     // Per-report (annual reports) — surfaced as `skipped` entries
     UNKNOWN_TAXONOMY: "UNKNOWN_TAXONOMY",
@@ -72,6 +73,8 @@ export class AppError extends Error {
             case ErrorCode.TOO_MANY_PASSIVE_COMPANIES:
             case ErrorCode.INVALID_SUCCESSION_MODE:
                 return 422;
+            case ErrorCode.RATE_LIMITED:
+                return 429;
             default:
                 return 500;
         }
@@ -89,6 +92,7 @@ export const defaultMessage: Record<ErrorCode, string> = {
     GROUP_TOO_LARGE: "Koncernen er for stor til projektmappen.",
     TOO_MANY_PASSIVE_COMPANIES: "Koncernen har for mange selskaber til passiv-aktiv-testen.",
     INVALID_SUCCESSION_MODE: "Ukendt passiv-aktiv-test tilstand.",
+    RATE_LIMITED: "For mange forespørgsler på kort tid. Vent et øjeblik, og prøv igen.",
     UNKNOWN_TAXONOMY: "Årsrapporten anvender en ukendt taksonomi og kunne ikke læses.",
     MALFORMED_XML: "Årsrapportens XML kunne ikke læses (ugyldigt format).",
     MISSING_NAMESPACE: "Årsrapportens XML mangler det forventede XBRL-namespace.",
@@ -132,6 +136,10 @@ export const errorResponses = {
         description: "Ugyldigt input (f.eks. et forkert CVR-nummer).",
         content: { "application/json": { schema: apiErrorSchema } },
     },
+    429: {
+        description: "For mange forespørgsler — prøv igen senere (se Retry-After).",
+        content: { "application/json": { schema: apiErrorSchema } },
+    },
     500: {
         description: "Intern serverfejl.",
         content: { "application/json": { schema: apiErrorSchema } },
@@ -163,6 +171,8 @@ export function toAppError(error: unknown): AppError {
         return new AppError(ErrorCode.UPSTREAM_UNAVAILABLE, defaultMessage.UPSTREAM_UNAVAILABLE);
     }
 
-    const message = error instanceof Error ? error.message : String(error);
-    return new AppError(ErrorCode.INTERNAL, message || defaultMessage.INTERNAL);
+    // Unexpected errors must not leak internals (file paths, library details) to
+    // the client: respond with the generic INTERNAL message. The app-level onError
+    // handler logs the original error separately, so nothing is lost server-side.
+    return new AppError(ErrorCode.INTERNAL, defaultMessage.INTERNAL);
 }
