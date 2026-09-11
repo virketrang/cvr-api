@@ -1,4 +1,5 @@
 import { z } from "@hono/zod-openapi";
+import { ErrorCode } from "../../utils/api-error.js";
 
 export const paramSchema = z.object({
     cvrNumber: z.coerce
@@ -494,21 +495,9 @@ const annualReportSchema = z.object({
     balancesheet: balanceSheetSchema.partial(),
 });
 
-// Codes must stay in sync with shared/api-error.ts ErrorCode and the VBA ApiErrorCode list.
-const errorCodeSchema = z.enum([
-    "UPSTREAM_UNAVAILABLE",
-    "UPSTREAM_ERROR",
-    "UPSTREAM_BAD_RESPONSE",
-    "NOT_FOUND",
-    "INVALID_CVR",
-    "UNKNOWN_TAXONOMY",
-    "MALFORMED_XML",
-    "MISSING_NAMESPACE",
-    "MALFORMED_UNIT",
-    "MISSING_PERIOD",
-    "NO_DATA",
-    "INTERNAL",
-]);
+// Derived from the shared ErrorCode so it can never drift out of sync with
+// utils/api-error.ts (which itself must stay in sync with the VBA ApiErrorCode list).
+const errorCodeSchema = z.enum(Object.values(ErrorCode) as [ErrorCode, ...ErrorCode[]]);
 
 const skipSchema = z.object({
     reportingPeriodEndDate: z.string().nullable().openapi({

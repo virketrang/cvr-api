@@ -5,6 +5,7 @@ import * as annualReports from "./modules/annual-reports/annual-report.controlle
 import * as version from "./modules/version/version.controller.js";
 import * as rateOfReturnOnCapital from "./modules/rate-of-return-on-capital/rate-of-return-on-capital.controller.js";
 import * as currencyRates from "./modules/currency-rates/currency-rates.controller.js";
+import * as projectResolutions from "./modules/project-resolutions/project-resolution.controller.js";
 
 export const hostname = process.env.HOSTNAME || "localhost";
 
@@ -22,6 +23,7 @@ const apiRoutes = [
     annualReports.batchRoute,
     rateOfReturnOnCapital.route,
     currencyRates.route,
+    projectResolutions.route,
 ];
 
 const endpoints = [

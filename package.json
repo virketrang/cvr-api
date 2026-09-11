@@ -3,6 +3,7 @@
     "type": "module",
     "scripts": {
         "dev": "tsx watch src/index.ts --env-file=.env",
+        "test": "node --import tsx --test \"src/**/*.test.ts\"",
         "build": "tsc && tsc-alias",
         "start": "node dist/index.js",
         "deploy": "gcloud run deploy bech-bruun-api --project=bech-bruun-api --source . --allow-unauthenticated --base-image nodejs24"

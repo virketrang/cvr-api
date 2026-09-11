@@ -14,6 +14,12 @@ export const ErrorCode = {
     // Input / not-found
     NOT_FOUND: "NOT_FOUND", // no company / group / rate data
     INVALID_CVR: "INVALID_CVR", // CVR failed validation
+    INVALID_INPUT: "INVALID_INPUT", // request body failed validation
+
+    // Project resolution (the workbook's "create project" flow)
+    GROUP_TOO_LARGE: "GROUP_TOO_LARGE", // more companies than the workbook has sheets
+    TOO_MANY_PASSIVE_COMPANIES: "TOO_MANY_PASSIVE_COMPANIES", // passive-test capacity exceeded
+    INVALID_SUCCESSION_MODE: "INVALID_SUCCESSION_MODE", // unknown succession-period label
 
     // Per-report (annual reports) — surfaced as `skipped` entries
     UNKNOWN_TAXONOMY: "UNKNOWN_TAXONOMY",
@@ -61,6 +67,10 @@ export class AppError extends Error {
             case ErrorCode.NOT_FOUND:
                 return 404;
             case ErrorCode.INVALID_CVR:
+            case ErrorCode.INVALID_INPUT:
+            case ErrorCode.GROUP_TOO_LARGE:
+            case ErrorCode.TOO_MANY_PASSIVE_COMPANIES:
+            case ErrorCode.INVALID_SUCCESSION_MODE:
                 return 422;
             default:
                 return 500;
@@ -75,6 +85,10 @@ export const defaultMessage: Record<ErrorCode, string> = {
     UPSTREAM_BAD_RESPONSE: "Det offentlige register returnerede et uforståeligt svar.",
     NOT_FOUND: "Der blev ikke fundet data for det angivne CVR-nummer.",
     INVALID_CVR: "CVR-nummeret er ugyldigt.",
+    INVALID_INPUT: "Ugyldigt input.",
+    GROUP_TOO_LARGE: "Koncernen er for stor til projektmappen.",
+    TOO_MANY_PASSIVE_COMPANIES: "Koncernen har for mange selskaber til passiv-aktiv-testen.",
+    INVALID_SUCCESSION_MODE: "Ukendt passiv-aktiv-test tilstand.",
     UNKNOWN_TAXONOMY: "Årsrapporten anvender en ukendt taksonomi og kunne ikke læses.",
     MALFORMED_XML: "Årsrapportens XML kunne ikke læses (ugyldigt format).",
     MISSING_NAMESPACE: "Årsrapportens XML mangler det forventede XBRL-namespace.",

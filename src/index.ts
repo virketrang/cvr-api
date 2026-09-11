@@ -17,6 +17,7 @@ import * as annualReports from "./modules/annual-reports/annual-report.controlle
 import * as version from "./modules/version/version.controller.js";
 import * as rateOfReturnOnCapital from "./modules/rate-of-return-on-capital/rate-of-return-on-capital.controller.js";
 import * as currencyRates from "./modules/currency-rates/currency-rates.controller.js";
+import * as projectResolutions from "./modules/project-resolutions/project-resolution.controller.js";
 
 const app = new OpenAPIHono({
     // Request-validation failures must speak the same structured error language as
@@ -26,7 +27,7 @@ const app = new OpenAPIHono({
         if (!result.success) {
             const body: ApiErrorBody = {
                 status: "error",
-                errorCode: ErrorCode.INVALID_CVR,
+                errorCode: ErrorCode.INVALID_INPUT,
                 message: result.error.issues[0]?.message ?? "Ugyldigt input.",
             };
             return ctx.json(body, 422);
@@ -60,6 +61,7 @@ app.openapi(annualReports.batchRoute, annualReports.batchRouter);
 app.openapi(version.route, version.router);
 app.openapi(rateOfReturnOnCapital.route, rateOfReturnOnCapital.router);
 app.openapi(currencyRates.route, currencyRates.router);
+app.openapi(projectResolutions.route, projectResolutions.router);
 
 app.get(
     "/documentation",
