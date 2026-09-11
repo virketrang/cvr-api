@@ -13,9 +13,17 @@ import type XBRLDocument from "./annual-report.utils.js";
  *
  *  - XHTML tables ("Navn / Hjemsted / Ejerandel …") — parsed via cheerio with
  *    header-keyword column mapping. Tables can be malformed or HTML-escaped.
+ *  - Glued column lists, the common shape in Danish class B/C filings
+ *    ("NavnHjemstedEjerandel…Thouber Tax-Free Cars A/SOdense100%4.142.331…"):
+ *    the column order is read from the header and each row is parsed from the
+ *    right — legal form, glued amount columns, the registered office (a city,
+ *    optionally ", Country"), then the name. Section labels ("Dattervirksomheder:",
+ *    "Associerede virksomheder:") set `relation`. See parseColumnList.
  *  - Plain concatenated text with no markup at all ("…Ownership %Orifarm Oy
  *    FinlandOy100.00…") — parsed right-anchored: split on percent tokens, peel a
  *    known corporate-form suffix, then a known country name; the rest is the name.
+ *  - Prose inside investment notes ("har erhvervet kapitalandele i E Electric ApS",
+ *    "datterselskaberne Nicon Industries A/S, …") — names only, no percentage.
  *
  * Filers mis-tag concepts (a subsidiaries list has been seen under
  * "InformationOnShorttermInvestmentsInGroupEnterprises"), so candidates are
@@ -228,6 +236,7 @@ export function structuredRelatedEntitiesToGroupEntities(relatedEntities: Relate
                 sourceConcept: "RelatedEntityName",
                 scope: null,
                 parent: null,
+                relation: null,
             };
         });
 }
@@ -316,7 +325,7 @@ type ColumnMap = {
 
 const HEADER_PATTERNS = {
     name: /^(navn|selskab(?:snavn)?|name|company|virksomhed)\b/i,
-    place: /hjemsted|registered|domicile|country|land\b|by\b/i,
+    place: /^(?:hjemsted|registered(?:\s+(?:office|in))?|domicile|country|land|by)\b/i,
     legalForm: /retsform|selskabsform|corporate\s*form|legal\s*form/i,
     ownership: /ejerandel|ownership|kapitalandel|andel/i,
     voting: /stemme|voting/i,
@@ -353,7 +362,7 @@ function looksLikeHeader(text: string): boolean {
 }
 
 /** Extracts group entities from XHTML tables in a note fragment (tier 2). */
-function parseTables(html: string, sourceConcept: string, scope: GroupEntityFromNotes["scope"]): GroupEntityFromNotes[] {
+export function parseTables(html: string, sourceConcept: string, scope: GroupEntityFromNotes["scope"]): GroupEntityFromNotes[] {
     const entities: GroupEntityFromNotes[] = [];
     const $ = cheerio.load(html);
 
@@ -378,31 +387,349 @@ function parseTables(html: string, sourceConcept: string, scope: GroupEntityFrom
 
             if (!columns) continue;
 
-            const name = cells[columns.name] ?? "";
+            let name = cells[columns.name] ?? "";
             if (!name || looksLikeHeader(name)) continue;
             // A name is a proper noun, not a number.
             if (/^[\d.,%\s]+$/.test(name)) continue;
 
-            const placeRaw = columns.place !== null ? cells[columns.place] || null : null;
+            // "Navn, retsform og hjemsted" cells bundle the office or CVR into the name.
+            let cvrNumber: string | null = null;
+            const cvrInName = /,?\s*CVR(?:-?nr\.?)?\s*:?\s*(\d{2}\s?\d{2}\s?\d{2}\s?\d{2})\s*$/i.exec(name);
+            if (cvrInName) {
+                cvrNumber = cvrInName[1].replace(/\s/g, "");
+                name = name.slice(0, cvrInName.index).trim();
+            }
+            let placeInName: string | null = null;
+            const officeInName = /,\s*([A-ZÆØÅ][a-zæøå.\-]+(?:\s[A-ZÆØÅ][a-zæøå.\-]+)?)$/.exec(name);
+            if (officeInName && columns.place === null) {
+                placeInName = officeInName[1];
+                name = name.slice(0, officeInName.index).trim();
+            }
+
+            const placeRaw = columns.place !== null ? cells[columns.place] || null : placeInName;
             const isCountry =
                 placeRaw !== null && COUNTRIES.some((c) => c.toLowerCase() === placeRaw.trim().toLowerCase());
 
             entities.push({
                 name,
-                cvrNumber: null,
+                cvrNumber,
                 country: isCountry ? placeRaw : null,
                 registeredOffice: !isCountry ? placeRaw : null,
-                legalForm: columns.legalForm !== null ? cells[columns.legalForm] || null : null,
+                legalForm: columns.legalForm !== null ? cells[columns.legalForm] || null : trailingLegalForm(name),
                 ownershipPercentage: columns.ownership !== null ? parsePercentage(cells[columns.ownership]) : null,
                 votingRightsPercentage: columns.voting !== null ? parsePercentage(cells[columns.voting]) : null,
                 source: "noteTable",
                 sourceConcept,
                 scope,
                 parent: null,
+                relation: null,
             });
         }
     });
 
+    return entities;
+}
+
+type ColumnKey = "name" | "place" | "form" | "amount" | "pct" | "voting";
+
+const COLUMN_LABELS: Array<[ColumnKey | "skip", RegExp]> = [
+    ["name", /^navn(?:\s*,\s*retsform)?(?:\s+og\s+hjemsted)?\s*:?/i],
+    ["amount", /^(?:selskabskapital|aktiekapital|anpartskapital|egenkapital|equity|årets\s+resultat|share\s+capital|profit(?:\/loss)?)\s*(?:\(?(?:t\.?\s*)?(?:dkk|kr\.?|eur|tkr\.?)\)?)?\s*:?/i],
+    ["name", /^(?:selskab(?:snavn)?|virksomhed(?:snavn)?|company(?:\s+name)?|name)(?![a-zæøå])\s*:?/i],
+    ["place", /^(?:hjemsted|registered\s+(?:office|in)|domicile|country|land)\s*:?/i],
+    ["form", /^(?:retsform|selskabsform|legal\s+form|corporate\s+form)\s*:?/i],
+    ["voting", /^(?:stemme(?:andel|ret)(?:sandel)?|voting(?:\s+rights?)?)\s*(?:i\s*)?%?\s*:?/i],
+    ["pct", /^(?:ejerandel(?:\s+i)?|ownership(?:\s+share|\s+interest)?|kapitalandel|andel)\s*%?\s*:?/i],
+    ["amount", /^(?:kapital|resultat|result)(?![a-zæøå])\s*(?:\(?(?:t\.?\s*)?(?:dkk|kr\.?|eur|tkr\.?)\)?)?\s*:?/i],
+    ["skip", /^(?:\(?(?:t\.?\s*)?(?:dkk|kr\.?|eur|tkr\.?)\)?|%|:|,|\.|i\s+alt)\s*/i],
+];
+
+/** Section labels inside a list that say what the following rows are. */
+const SECTION_LABEL =
+    /^(?:(datter(?:virksomhed|selskab)(?:er)?|tilknyttede\s+virksomheder|subsidiaries|group\s+enterprises)|(associerede\s+virksomheder|kapitalinteresser|associates))\s*:?\s*/i;
+
+/** True when a would-be row name is really a stray column label ("Navn", "Ejerandel i %"). */
+function looksLikeListHeaderCell(text: string): boolean {
+    return (
+        text.length < 40 &&
+        /^(?:navn|selskab|name|company|virksomhed|hjemsted|retsform|ejerandel|ownership|egenkapital|årets\s+resultat|resultat|kapital)\b/i.test(text)
+    );
+}
+
+/** Legal-form suffix at the end of a text, or null. Case-insensitive, longest first. */
+function trailingLegalForm(text: string): string | null {
+    const lower = text.toLowerCase();
+    const form = LEGAL_FORMS.find((candidate) => lower.endsWith(candidate.toLowerCase()));
+    if (!form) return null;
+    // Must be a whole token: "Oy" in "Orifarm Oy" yes, "ab" in "Kebab" no.
+    const before = text[text.length - form.length - 1];
+    return before === undefined || !/[a-zæøå0-9]/i.test(before) || /[A-ZÆØÅ]$/.test(text.slice(-form.length, -form.length + 1)) ? text.slice(-form.length) : null;
+}
+
+interface ListHeader {
+    columns: ColumnKey[];
+    /** Where the header starts and where its rows start. */
+    start: number;
+    rowsStart: number;
+    /** What the text just before the header says the rows are. */
+    relation: GroupEntityFromNotes["relation"];
+}
+
+/**
+ * Reads every column-list header in a note ("Navn Hjemsted Ejerandel …"), in
+ * order. A header that opens with Hjemsted/Retsform has an implicit name column
+ * in front. The rows of one header run until the next header.
+ */
+export function readListHeaders(text: string): ListHeader[] {
+    const headerStart = /navn|selskab(?![a-zæøå])|virksomhed(?![a-zæøå])|company|\bname\b|hjemsted|retsform/gi;
+    const pctLabel = /ejerandel|ownership|kapitalandel/i;
+    const headers: ListHeader[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = headerStart.exec(text)) !== null) {
+        const start = match.index;
+        if (headers.length && start < headers[headers.length - 1].rowsStart) continue;
+        // A header lists its column labels within a short span.
+        if (!pctLabel.test(text.slice(start, start + 160))) continue;
+
+        const columns: ColumnKey[] = [];
+        let pos = start;
+        while (pos < text.length) {
+            const rest = text.slice(pos);
+            const ws = /^\s+/.exec(rest);
+            if (ws) {
+                pos += ws[0].length;
+                continue;
+            }
+            let advanced = false;
+            for (const [key, pattern] of COLUMN_LABELS) {
+                const m = pattern.exec(rest);
+                if (!m || m[0].length === 0) continue;
+                // "Navn, retsform og hjemsted" / "Navn og hjemsted" bundle columns into the name cell.
+                if (key === "name") {
+                    columns.push("name");
+                    if (/retsform/i.test(m[0])) columns.push("form");
+                    if (/hjemsted/i.test(m[0])) columns.push("place");
+                } else if (key !== "skip") {
+                    columns.push(key);
+                }
+                pos += m[0].length;
+                advanced = true;
+                break;
+            }
+            if (!advanced) break;
+        }
+        if (!columns.includes("pct")) continue;
+        if (!columns.includes("name")) {
+            // "HjemstedRetsformEjerandel": the name column has no label but comes first.
+            if (columns[0] !== "place" && columns[0] !== "form") continue;
+            columns.unshift("name");
+        }
+        const before = text.slice(Math.max(0, start - 70), start);
+        const relation: GroupEntityFromNotes["relation"] = /associere|kapitalinteresse/i.test(before)
+            ? "associate"
+            : /datter|tilknyttede|subsidiar/i.test(before)
+              ? "subsidiary"
+              : null;
+        headers.push({ columns, start, rowsStart: pos, relation });
+        headerStart.lastIndex = pos;
+    }
+
+    return headers;
+}
+
+/** The first list header of a note (kept for callers that only need one). */
+export function readListHeader(text: string): { columns: ColumnKey[]; rowsStart: number } | null {
+    const first = readListHeaders(text)[0];
+    return first ? { columns: first.columns, rowsStart: first.rowsStart } : null;
+}
+
+/**
+ * Picks the ownership share out of a digit run that may be glued to a preceding
+ * amount ("87.34539.891100" → 100, "48850" → 50). Prefers 100, then the longest
+ * suffix that is a valid share. Returns null when the run is not clearly a share.
+ */
+export function shareFromGluedDigits(run: string): number | null {
+    const clean = run.replace(/\s/g, "");
+    if (/^\d{1,3}([.,]\d{1,2})?$/.test(clean)) return parsePercentage(clean);
+    if (clean.endsWith("100")) return 100;
+    const decimal = /(\d{1,2}[.,]\d{1,2})$/.exec(clean);
+    if (decimal) return parsePercentage(decimal[1]);
+    const twoDigits = /(\d{2})$/.exec(clean);
+    if (twoDigits && twoDigits[1] !== "00") return parsePercentage(twoDigits[1]);
+    return null;
+}
+
+/**
+ * Extracts group entities from a column list whose cells arrived glued together
+ * (tier 3a): "NavnHjemstedEjerandel…Thouber Tax-Free Cars A/SOdense100%4.142.331…".
+ *
+ * The column order is read from the header, then every row is cut at its
+ * ownership token and parsed from the right: legal form (retsform column),
+ * glued amount columns, the registered office (the last capitalised word, with
+ * an optional ", Country"), and what remains is the name. Section labels
+ * ("Dattervirksomheder:", "Associerede virksomheder:") classify the rows that
+ * follow. Rows that do not parse are skipped; the note is rejected when fewer
+ * than half of its rows parse.
+ */
+export function parseColumnList(text: string, sourceConcept: string, scope: GroupEntityFromNotes["scope"]): GroupEntityFromNotes[] {
+    const normalized = cleanText(text);
+    const headers = readListHeaders(normalized);
+    const entities: GroupEntityFromNotes[] = [];
+    let rows = 0;
+
+    headers.forEach((header, index) => {
+        const segmentEnd = headers[index + 1]?.start ?? normalized.length;
+        const parsed = parseListSegment(normalized.slice(header.rowsStart, segmentEnd), header, sourceConcept, scope);
+        rows += parsed.rows;
+        entities.push(...parsed.entities);
+    });
+
+    // The note is rejected when fewer than half of its rows parse.
+    return rows > 0 && entities.length * 2 >= rows ? entities : [];
+}
+
+function parseListSegment(
+    body: string,
+    header: ListHeader,
+    sourceConcept: string,
+    scope: GroupEntityFromNotes["scope"],
+): { entities: GroupEntityFromNotes[]; rows: number } {
+    const { columns } = header;
+    const pctIndex = columns.indexOf("pct");
+    const amountsAfterPct = columns.slice(pctIndex + 1).some((c) => c === "amount" || c === "voting");
+    const amountsBeforePct = columns.slice(0, pctIndex).some((c) => c === "amount");
+    const hasFormColumn = columns.includes("form");
+    const hasPlace = columns.includes("place");
+    const usesPercentSign = /%/.test(body);
+
+    // Row terminator: a share with "%" — or, in lists without "%", a bare share
+    // right before the next capitalised name (only safe when nothing follows it).
+    const pctToken = usesPercentSign
+        ? /(\d[\d.,]*?)\s*%/g
+        : amountsAfterPct
+          ? null
+          : /(?<![\d.,])(100|\d{1,2}(?:[.,]\d{1,2})?)(?=\s*(?:[A-ZÆØÅ"“]|$))/g;
+    if (!pctToken) return { entities: [], rows: 0 };
+
+    const entities: GroupEntityFromNotes[] = [];
+    let rows = 0;
+    let relation = header.relation;
+    let cursor = 0;
+    let match: RegExpExecArray | null;
+
+    while ((match = pctToken.exec(body)) !== null) {
+        let chunk = body.slice(cursor, match.index);
+        cursor = pctToken.lastIndex;
+
+        // Amounts that trail the previous row's share belong to no name.
+        if (amountsAfterPct) chunk = chunk.replace(/^[\s\d.,\-–%]+/, "");
+        chunk = chunk.trim();
+
+        const section = SECTION_LABEL.exec(chunk);
+        if (section) {
+            relation = section[1] ? "subsidiary" : "associate";
+            chunk = chunk.slice(section[0].length).trim();
+        }
+        if (!chunk) continue;
+        rows++;
+
+        const rawShare = match[1];
+        const share = shareFromGluedDigits(rawShare);
+        // A share glued to an amount column is only trusted when it resolves cleanly.
+        const shareTrusted = /^\d{1,3}([.,]\d{1,2})?$/.test(rawShare.replace(/\s/g, "")) || (amountsBeforePct && share !== null);
+
+        let rest = chunk;
+        let legalForm: string | null = null;
+        if (hasFormColumn) {
+            legalForm = trailingLegalForm(rest);
+            if (legalForm) rest = rest.slice(0, -legalForm.length).trim();
+        }
+        // Amount columns between the name/place and the share (equity, result…).
+        if (amountsBeforePct) rest = rest.replace(/[\s\d.,\-–]+$/, "").trim();
+
+        let place: string | null = null;
+        if (hasPlace) {
+            // "Hadsund, Danmark" — but "J-Maskiner, Rødekro" is name + city, so the
+            // comma-separated second word only counts when it is a known country.
+            const withCountry = /(?:,\s*)?(\p{Lu}[\p{Ll}.\-]+(?:\s\p{Lu}[\p{Ll}.\-]+)?,\s*(\p{Lu}[\p{Ll}.\-]+))$/u.exec(rest);
+            const placeMatch =
+                withCountry && COUNTRIES.some((c) => c.toLowerCase() === withCountry[2].toLowerCase())
+                    ? withCountry
+                    : /(?:,\s*)?(\p{Lu}[\p{Ll}.\-]+(?:\s\p{Lu}[\p{Ll}.\-]+)?)$/u.exec(rest);
+            if (placeMatch && placeMatch[1].length < rest.length) {
+                place = placeMatch[1].trim();
+                rest = rest.slice(0, placeMatch.index).trim();
+            }
+        }
+
+        let cvrNumber: string | null = null;
+        const cvr = /,?\s*CVR(?:-?nr\.?)?\s*:?\s*(\d{2}\s?\d{2}\s?\d{2}\s?\d{2})\s*$/i.exec(rest);
+        if (cvr) {
+            cvrNumber = cvr[1].replace(/\s/g, "");
+            rest = rest.slice(0, cvr.index).trim();
+        }
+
+        // Footnote markers ("*)", "**", "1)") and separators do not belong to the name.
+        const name = rest
+            .replace(/\s*(?:\*+\)?|\d\))\s*$/, "")
+            .replace(/[,;:·|\s]+$/, "")
+            .replace(/^[+•·–\-\s]+(?=\S)/, "")
+            .trim();
+        if (!name || name.length < 3 || !/[a-zæøå]/i.test(name) || looksLikeListHeaderCell(name) || SECTION_LABEL.test(name)) continue;
+        // Without any corroborating column the row is too weak to trust.
+        if (!place && !legalForm && !trailingLegalForm(name) && !shareTrusted) continue;
+
+        const isCountry = place !== null && COUNTRIES.some((c) => c.toLowerCase() === place.toLowerCase());
+        const country = place && !isCountry ? (COUNTRIES.find((c) => place!.toLowerCase().endsWith(", " + c.toLowerCase())) ?? null) : place;
+
+        entities.push({
+            name,
+            cvrNumber,
+            country,
+            registeredOffice: isCountry ? null : country ? place!.slice(0, -country.length).replace(/,\s*$/, "") : place,
+            legalForm: legalForm ?? trailingLegalForm(name),
+            ownershipPercentage: shareTrusted ? share : null,
+            votingRightsPercentage: null,
+            source: "noteText",
+            sourceConcept,
+            scope,
+            parent: null,
+            relation,
+        });
+    }
+
+    return { entities, rows };
+}
+
+/** Names mentioned in the prose of an investments note (tier 3b): "kapitalandele i X ApS", "dattervirksomheden X A/S". */
+export function parseInvestmentProse(text: string, sourceConcept: string, scope: GroupEntityFromNotes["scope"]): GroupEntityFromNotes[] {
+    const normalized = cleanText(text);
+    const formAlt = LEGAL_FORMS.map((f) => f.replace(/[.*+?^${}()|[\]\\\/]/g, "\\$&")).join("|");
+    const pattern = new RegExp(
+        `(?:kapitalandele(?:ne)?\\s+i|(datter(?:virksomhed|selskab)(?:en|et|erne|er)?|tilknyttede\\s+virksomhed(?:en|er)?)|(associerede\\s+virksomhed(?:en|er)?|kapitalinteresse[rn]?))\\s+((?:[A-ZÆØÅ0-9][^\\s,.;()]*\\s){0,6}?(?:${formAlt}))(?=[\\s,.;:)]|$)`,
+        "g",
+    );
+    const entities: GroupEntityFromNotes[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(normalized)) !== null) {
+        const name = match[3].trim();
+        if (name.length < 4 || /^(?:tilknyttede|associerede|datter)/i.test(name)) continue;
+        entities.push({
+            name,
+            cvrNumber: null,
+            country: null,
+            registeredOffice: null,
+            legalForm: trailingLegalForm(name),
+            ownershipPercentage: null,
+            votingRightsPercentage: null,
+            source: "noteText",
+            sourceConcept,
+            scope,
+            parent: null,
+            relation: match[2] ? "associate" : match[1] ? "subsidiary" : null,
+        });
+    }
     return entities;
 }
 
@@ -413,7 +740,7 @@ function parseTables(html: string, sourceConcept: string, scope: GroupEntityFrom
  * from the right; the remainder is the entity name. STRICT: if any row fails to
  * parse, the whole note is discarded — better nothing than half-parsed garbage.
  */
-function parsePlainText(
+export function parsePlainText(
     text: string,
     sourceConcept: string,
     scope: GroupEntityFromNotes["scope"],
@@ -484,6 +811,7 @@ function parsePlainText(
             sourceConcept,
             scope,
             parent: null,
+            relation: null,
         });
     }
 
@@ -563,9 +891,14 @@ export function extractGroupEntitiesFromNotes(
             entities = parseTables(text, sourceConcept, scope);
         }
 
-        // Tier 3: plain concatenated text.
+        // Tier 3: plain concatenated text — a glued column list first, then the
+        // right-anchored country/legal-form rows, then prose in investment notes.
         if (entities.length === 0 && !/<table/i.test(serialized) && !/<table/i.test(text)) {
-            entities = parsePlainText(text, sourceConcept, scope);
+            entities = parseColumnList(text, sourceConcept, scope);
+            if (entities.length === 0) entities = parsePlainText(text, sourceConcept, scope);
+        }
+        if (/invest|subsidiar|groupenterprise|kapitalandel/i.test(sourceConcept) || /kapitalandele i/i.test(text)) {
+            entities = entities.concat(parseInvestmentProse(text, sourceConcept, scope));
         }
 
         for (const entity of entities) {

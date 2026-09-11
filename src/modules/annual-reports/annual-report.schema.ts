@@ -409,6 +409,12 @@ export const groupEntityFromNotesSchema = z.object({
         description: "Om noten står i koncern- eller moderselskabskontekst, når det er opmærket",
         example: "consolidated",
     }),
+    relation: z.enum(["subsidiary", "associate"]).nullable().openapi({
+        description:
+            "Hvad noten kalder virksomheden: subsidiary (datter-/tilknyttet virksomhed) eller associate " +
+            "(associeret virksomhed/kapitalinteresse). null når noten ikke siger det.",
+        example: "subsidiary",
+    }),
     parent: z
         .object({
             name: z.string().nullable().openapi({

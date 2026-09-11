@@ -149,6 +149,8 @@ export interface GroupEntityFromNotes {
     sourceConcept: string;
     /** Whether the note sits in a consolidated (koncern) or solo context, when tagged. */
     scope: "consolidated" | "solo" | null;
+    /** What the note calls the entity: a subsidiary (datter-/tilknyttet virksomhed) or an associate (associeret/kapitalinteresse); null when the note does not say. */
+    relation: "subsidiary" | "associate" | null;
     /**
      * The entity's DIRECT parent, set only when it is certain: a solo-scope note —
      * or any note in a filing without consolidated statements — describes the
