@@ -34,3 +34,32 @@ export function datePathParam(name: string, description: string, example: string
             param: { in: "path", name, required: true },
         });
 }
+
+/**
+ * An optional query parameter holding a calendar date, normalized to ISO
+ * yyyy-mm-dd like {@link datePathParam}; absent when the client sends nothing.
+ */
+export function dateQueryParam(name: string, description: string, example: string) {
+    return z
+        .string()
+        .transform((value, ctx) => {
+            const isoDate = parseFlexibleDate(value);
+            if (!isoDate) {
+                ctx.addIssue({
+                    code: "custom",
+                    message:
+                        `Datoen "${value}" i parameteren ${name} kunne ikke genkendes som en gyldig kalenderdato. ` +
+                        "Understøttede formater: 2025-12-31, 31-12-2025, 20251231, 31122025 " +
+                        "(også med / eller . som skilletegn) samt månedsnavne, fx '31. december 2025'.",
+                });
+                return z.NEVER;
+            }
+            return isoDate;
+        })
+        .optional()
+        .openapi({
+            description: `${description} ${FORMATS_HINT}`,
+            example,
+            param: { in: "query", name, required: false },
+        });
+}

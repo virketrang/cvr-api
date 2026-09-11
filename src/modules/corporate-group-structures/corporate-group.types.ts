@@ -288,6 +288,43 @@ export interface Capital {
     currency: string | null;
 }
 
+/** One registered ownership value and what applied alongside it. */
+export interface OwnershipSegment {
+    /** First day the value applied (registry gyldigFra, ISO yyyy-mm-dd). */
+    from: string;
+    /** Last day the value applied, or null while it still applies. */
+    to: string | null;
+    /** The date of the ownership notice (EJERANDEL_MEDDELELSE_DATO) — closer to the actual transfer than `from`. */
+    noticeDate: string | null;
+    ownershipPercentage: OwnershipPercentage;
+    votingRightsPercentage: OwnershipPercentage;
+}
+
+/** The span during which the company has been owned by its parent in the group. */
+export interface Membership {
+    from: string;
+    /** null while the ownership is still registered. */
+    to: string | null;
+}
+
+/** How a group lookup should read the registry's dated values. */
+export interface GroupLookupOptions {
+    /** ISO yyyy-mm-dd: read every dated value as it applied on that day; null = as of now. */
+    asOf: string | null;
+    /** Include ownershipHistory and membership per company. */
+    history: boolean;
+    /**
+     * Period view: include every company that was in the group at any point in
+     * the window, read its values as of the last day it was there, and derive
+     * events. Implies history. Mutually exclusive with asOf.
+     */
+    window: { from: string; to: string } | null;
+    /** Also follow relations where the parent is only a fully liable participant (komplementar) without an ownership share. */
+    includeFullyLiable: boolean;
+}
+
+export type { GroupEvent, GroupEventType } from "./corporate-group.periods.js";
+
 export interface Company {
     name: string;
     cvr: number;
@@ -297,6 +334,18 @@ export interface Company {
     votingRightsPercentage: OwnershipPercentage;
     selfOwnershipPercentage?: { from: number | null; to: number | null } | null;
     dateOfIncorporation: string | null;
+    /** The date the company ceased to exist (end of livsforloeb), or null while it exists. */
+    dateOfDissolution: string | null;
+    /** Every registered ownership value from the parent, oldest first. Only with history=true. */
+    ownershipHistory?: OwnershipSegment[];
+    /** When the company has been owned by its parent. Only with history=true; null for the root. */
+    membership?: Membership | null;
+    /** What happened to the company's place in the group inside the period. Only in the period view. */
+    events?: import("./corporate-group.periods.js").GroupEvent[];
+    /** Whether the parent is registered as a fully liable participant (fuldt ansvarlig deltager, e.g. komplementar). */
+    fullyLiable: boolean;
+    /** The parent's role in this company by legal form: KOMPLEMENTAR, KOMMANDITIST, INTERESSENT, … null for an ordinary shareholder. */
+    participantRole: string | null;
     /** Whether the company is listed on a stock exchange (BØRSNOTERET). */
     listed: boolean;
     /** The company's stated purpose (FORMÅL). */

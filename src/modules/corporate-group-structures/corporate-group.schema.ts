@@ -1,5 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
+import { dateQueryParam } from "../../utils/date-param.js";
+
 const percentageIntervalSchema = (subject: string) =>
     z
         .object({
@@ -161,8 +163,97 @@ const companySchema = z.object({
         description: "The date the company was incorporated",
         example: "1989-11-28",
     }),
+    dateOfDissolution: z.string().nullable().openapi({
+        description: "The date the company ceased to exist, or null while it exists",
+        example: null,
+    }),
     ownershipPercentage: percentageSchema("ownership percentage"),
     votingRightsPercentage: percentageSchema("voting rights percentage"),
+    ownershipHistory: z
+        .array(
+            z.object({
+                from: z.string().openapi({
+                    description: "First day the registered value applied (gyldigFra)",
+                    example: "2016-07-25",
+                }),
+                to: z.string().nullable().openapi({
+                    description: "Last day the value applied, or null while it still applies",
+                    example: "2018-10-22",
+                }),
+                noticeDate: z.string().nullable().openapi({
+                    description:
+                        "Date of the ownership notice (ejerandel meddelelsesdato) — usually closer to the actual " +
+                        "transfer than 'from', which is the registration date",
+                    example: "2016-07-25",
+                }),
+                ownershipPercentage: percentageSchema("ownership percentage"),
+                votingRightsPercentage: percentageSchema("voting rights percentage"),
+            }),
+        )
+        .optional()
+        .openapi({
+            description:
+                "Every ownership value the parent has had registered for this company, oldest first. " +
+                "Only present when history=true. Empty for the root company.",
+        }),
+    membership: z
+        .object({
+            from: z.string().openapi({ description: "First day the parent's ownership was registered", example: "2016-07-25" }),
+            to: z.string().nullable().openapi({
+                description: "Last day the parent's ownership was registered, or null while still owned",
+                example: null,
+            }),
+        })
+        .nullable()
+        .optional()
+        .openapi({
+            description: "When the company has been part of the group under its parent. Only present when history=true; null for the root company.",
+        }),
+    events: z
+        .array(
+            z.object({
+                date: z.string().openapi({ example: "2023-04-01" }),
+                type: z.enum(["JOINED", "LEFT", "OWNERSHIP_CHANGED", "OWNER_CHANGED", "DISSOLVED"]).openapi({
+                    description:
+                        "JOINED/LEFT: the parent's ownership began/ended. OWNERSHIP_CHANGED: a new ownership or voting " +
+                        "band was registered. OWNER_CHANGED: the company moved from another group company to this parent. " +
+                        "DISSOLVED: the company ceased to exist.",
+                }),
+                before: z
+                    .object({
+                        ownershipPercentage: percentageSchema("ownership percentage"),
+                        votingRightsPercentage: percentageSchema("voting rights percentage"),
+                    })
+                    .optional(),
+                after: z
+                    .object({
+                        ownershipPercentage: percentageSchema("ownership percentage"),
+                        votingRightsPercentage: percentageSchema("voting rights percentage"),
+                    })
+                    .optional(),
+                previousParent: z
+                    .object({
+                        name: z.string(),
+                        cvr: z.number(),
+                    })
+                    .optional(),
+            }),
+        )
+        .optional()
+        .openapi({
+            description: "What happened to the company's place in the group inside the period. Only present in the period view (from/to).",
+        }),
+    fullyLiable: z.boolean().openapi({
+        description: "Whether the parent is registered as a fully liable participant (fuldt ansvarlig deltager), e.g. komplementar in a K/S",
+        example: false,
+    }),
+    participantRole: z.string().nullable().openapi({
+        description:
+            "The parent's role in this company by legal form: KOMPLEMENTAR, KOMMANDITIST or KOMPLEMENTAR_OG_KOMMANDITIST (K/S); " +
+            "KOMPLEMENTAR, KOMMANDITAKTIONÆR or KOMPLEMENTAR_OG_KOMMANDITAKTIONÆR (P/S); INTERESSENT (I/S); " +
+            "FULDT_ANSVARLIG_DELTAGER otherwise; null for an ordinary shareholder",
+        example: null,
+    }),
     selfOwnershipPercentage: percentageIntervalSchema("self-ownership percentage")
         .nullable()
         .optional()
@@ -301,3 +392,51 @@ export const paramSchema = z.object({
             },
         }),
 });
+
+export const querySchema = z
+    .object({
+    asOf: dateQueryParam(
+        "asOf",
+        "Vis koncernen, som den så ud på denne dato: ejerandele, stemmerettigheder, navne, selskabsform og " +
+            "medlemskab af koncernen vælges ud fra registerets gyldighedsperioder. Udelades: som den ser ud nu.",
+        "2023-12-31",
+    ),
+    history: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((value) => value === "true")
+        .openapi({
+            description: "true: medtag ownershipHistory og membership pr. selskab (alle registrerede ejerandele over tid).",
+            example: "true",
+            param: { in: "query", name: "history", required: false },
+        }),
+    from: dateQueryParam(
+        "from",
+        "Periodevisning, start: medtag alle selskaber, der har været i koncernen på noget tidspunkt fra denne dato til 'to', " +
+            "med ejerhistorik og hændelser (tilgået, afgået, ændret ejerandel, skiftet ejer, ophørt). Kræver 'to'; kan ikke kombineres med asOf.",
+        "2022-01-01",
+    ),
+    to: dateQueryParam("to", "Periodevisning, slut. Selskabernes værdier læses pr. den sidste dag, de var i koncernen inden for perioden.", "2024-12-31"),
+    includeFullyLiable: z
+        .enum(["true", "false"])
+        .optional()
+        .transform((value) => value === "true")
+        .openapi({
+            description:
+                "true: medtag også selskaber, hvor koncernselskabet alene er fuldt ansvarlig deltager (fx komplementar i et K/S) " +
+                "uden registreret ejerandel. Standard: kun ejerskaber fra Ejerregisteret.",
+            example: "false",
+            param: { in: "query", name: "includeFullyLiable", required: false },
+        }),
+    })
+    .superRefine((query, ctx) => {
+        if ((query.from === undefined) !== (query.to === undefined)) {
+            ctx.addIssue({ code: "custom", message: "Parametrene from og to skal angives sammen." });
+        }
+        if (query.from !== undefined && query.to !== undefined && query.from > query.to) {
+            ctx.addIssue({ code: "custom", message: `Perioden er vendt om: from (${query.from}) ligger efter to (${query.to}).` });
+        }
+        if (query.asOf !== undefined && query.from !== undefined) {
+            ctx.addIssue({ code: "custom", message: "asOf kan ikke kombineres med from/to. Brug enten et øjebliksbillede (asOf) eller en periode (from/to)." });
+        }
+    });
