@@ -17,6 +17,8 @@ export interface OwnershipPercentage {
         to: number | null;
     };
     accurate: boolean;
+    /** Human-readable band for display, e.g. "25–33,32 %" or "100 %"; null when unknown. */
+    label?: string | null;
 }
 
 export interface Period {
@@ -259,10 +261,42 @@ export interface CorporateEvent {
     name: string | null;
     /** The date the event took effect (periode.gyldigFra). */
     date: string | null;
-    /** True when this company was on the receiving end (indgående). */
+    /**
+     * True when the registry lists this company under "indgaaende": it went INTO
+     * the event as a transferring company. (The name suggests the opposite; the
+     * data does not: companies dissolved by a merger carry only this flag.)
+     */
     incoming: boolean;
-    /** True when this company was on the giving end (udgående). */
+    /** True when listed under "udgaaende": it came OUT of the event as a receiving/continuing company. */
     outgoing: boolean;
+}
+
+/** A merger or demerger the company took part in, with the other parties resolved from the register. */
+export interface Restructuring {
+    /** The registry's id of the event; the same on every party, so it can be used to aggregate. */
+    eventId: number;
+    type: "MERGER" | "DEMERGER";
+    date: string | null;
+    /** TRANSFERRING = indskydende (contributed its assets), RECEIVING = modtagende/continuing. */
+    role: "TRANSFERRING" | "RECEIVING";
+    /** Whether this company ceased to exist in the event. */
+    dissolved: boolean;
+    /** The other parties, whether or not they were ever part of the group. */
+    counterparts: Array<{ cvr: number; name: string; role: "TRANSFERRING" | "RECEIVING"; dissolved: boolean }>;
+}
+
+/** Why a company ceased to exist, derived from its last registered status. */
+export type DissolutionReason = "MERGER" | "DEMERGER" | "LIQUIDATION" | "BANKRUPTCY" | "OTHER";
+
+/** One requested date in the multi-snapshot view. */
+export interface OwnershipSnapshot {
+    date: string;
+    /** Whether the company was in the group under this parent on the date. */
+    member: boolean;
+    ownershipPercentage: OwnershipPercentage;
+    votingRightsPercentage: OwnershipPercentage;
+    fullyLiable: boolean;
+    participantRole: string | null;
 }
 
 /** The company's current registered address (beliggenhedsadresse). */
@@ -323,6 +357,11 @@ export interface GroupLookupOptions {
     window: { from: string; to: string } | null;
     /** Also follow relations where the parent is only a fully liable participant (komplementar) without an ownership share. */
     includeFullyLiable: boolean;
+    /**
+     * Multi-snapshot view: the requested dates (ISO, ascending). Implies a window
+     * from the first to the last date; each company gets one snapshot per date.
+     */
+    dates: string[] | null;
 }
 
 export type { GroupEvent, GroupEventType } from "./corporate-group.periods.js";
@@ -338,6 +377,18 @@ export interface Company {
     dateOfIncorporation: string | null;
     /** The date the company ceased to exist (end of livsforloeb), or null while it exists. */
     dateOfDissolution: string | null;
+    /** Why it ceased to exist, or null while it exists. */
+    dissolutionReason: DissolutionReason | null;
+    /** The registry's own last status text, e.g. "OPLØST EFTER FUSION"; null while the company is normal. */
+    dissolutionStatus: string | null;
+    /** Mergers and demergers with the other parties resolved (all of them, or those inside the period/dates span). */
+    restructurings: Restructuring[];
+    /** One entry per requested date. Only in the multi-snapshot view (dates=…). */
+    snapshots?: OwnershipSnapshot[];
+    /** When this response was produced (ISO timestamp). */
+    retrievedAt: string;
+    /** When the register last updated this company's record (Vrvirksomhed.sidstOpdateret). */
+    registerUpdatedAt: string | null;
     /** Every registered ownership value from the parent, oldest first. Only with history=true. */
     ownershipHistory?: OwnershipSegment[];
     /** When the company has been owned by its parent. Only with history=true; null for the root. */

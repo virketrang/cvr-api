@@ -1,6 +1,9 @@
 import type {
     Attribute,
     Company,
+    CorporateEventSource as RegistryEvent,
+    OwnershipSnapshot,
+    Restructuring,
     CompanyAddress,
     CompanyFlattened,
     CorporateEvent,
@@ -16,6 +19,7 @@ import {
     bandOf,
     buildOwnershipHistory,
     deriveEvents,
+    dissolutionReasonOf,
     isoDay,
     latestDayIn,
     membershipOf,
@@ -34,7 +38,10 @@ import { basicAuthHeader, fetchUpstreamJson } from "../../utils/http.js";
 
 const CVR_API_URL = "http://distribution.virk.dk/cvr-permanent/virksomhed/_search";
 
-const NOW: GroupLookupOptions = { asOf: null, history: false, window: null, includeFullyLiable: false };
+const NOW: GroupLookupOptions = { asOf: null, history: false, window: null, includeFullyLiable: false, dates: null };
+
+/** Registry status texts that mean the company no longer exists. */
+const DISSOLVED_STATUS = /OPLØST|SLETTET|TVANGSOPLØST|OPHØRT/i;
 
 export default abstract class CorporateGroupService {
     /** Safely turns a date-ish string into an ISO string, or null if unparseable. */
@@ -98,6 +105,55 @@ export default abstract class CorporateGroupService {
         return CorporateGroupService.safeIsoDate(first?.periode?.gyldigFra ?? virksomhed.virksomhedMetadata.stiftelsesDato);
     }
 
+    /** The registry's last status text when it says the company is gone, else null. */
+    private static dissolutionStatus(virksomhed: Virksomhed): string | null {
+        const statuses = [...(virksomhed.virksomhedsstatus ?? [])].sort((a, b) =>
+            a.periode.gyldigFra.localeCompare(b.periode.gyldigFra),
+        );
+        const last = statuses[statuses.length - 1]?.status ?? virksomhed.virksomhedMetadata.sammensatStatus ?? null;
+        return last && DISSOLVED_STATUS.test(last) ? last : null;
+    }
+
+    /**
+     * The company's mergers and demergers as the registry records them, without
+     * counterparts (those are resolved for the whole group in one query later).
+     *
+     * Flags as observed in the register: a party dissolved in the event carries
+     * only "indgaaende"; a company created by a demerger carries only "udgaaende";
+     * a continuing company carries both — which in a MERGER means it received the
+     * others (the receiving company), and in a DEMERGER means it contributed a
+     * branch and lived on (grenspaltning: the transferring company).
+     */
+    public static classifyRestructuringRole(
+        type: Restructuring["type"],
+        event: Pick<RegistryEvent, "indgaaende" | "udgaaende">,
+    ): Restructuring["role"] {
+        const inbound = event.indgaaende.length > 0;
+        const outbound = event.udgaaende.length > 0;
+        if (type === "MERGER") return outbound ? "RECEIVING" : "TRANSFERRING";
+        return inbound ? "TRANSFERRING" : "RECEIVING";
+    }
+
+    private static ownRestructurings(virksomhed: Virksomhed): Restructuring[] {
+        const dissolvedOn = CorporateGroupService.dateOfDissolution(virksomhed);
+        const toRestructuring = (event: RegistryEvent, type: Restructuring["type"]): Restructuring => {
+            const date = isoDay(CorporateGroupService.convertCorporateEvent(event).date);
+            const role = CorporateGroupService.classifyRestructuringRole(type, event);
+            return {
+                eventId: event.enhedsNummerOrganisation,
+                type,
+                date,
+                role,
+                dissolved: role === "TRANSFERRING" && dissolvedOn !== null && date === dissolvedOn,
+                counterparts: [],
+            };
+        };
+        return [
+            ...(virksomhed.fusioner ?? []).map((e) => toRestructuring(e, "MERGER")),
+            ...(virksomhed.spaltninger ?? []).map((e) => toRestructuring(e, "DEMERGER")),
+        ].sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+    }
+
     /** The end of the company's last life period, or null while it still exists. */
     private static dateOfDissolution(virksomhed: Virksomhed): string | null {
         const periods = virksomhed.livsforloeb ?? [];
@@ -119,6 +175,10 @@ export default abstract class CorporateGroupService {
         | "financialYear"
         | "dateOfIncorporation"
         | "dateOfDissolution"
+        | "dissolutionReason"
+        | "dissolutionStatus"
+        | "restructurings"
+        | "registerUpdatedAt"
         | "listed"
         | "purpose"
         | "hasShareClasses"
@@ -168,6 +228,10 @@ export default abstract class CorporateGroupService {
             },
             dateOfIncorporation: CorporateGroupService.dateOfIncorporation(virksomhed),
             dateOfDissolution: CorporateGroupService.dateOfDissolution(virksomhed),
+            dissolutionReason: dissolutionReasonOf(CorporateGroupService.dissolutionStatus(virksomhed)),
+            dissolutionStatus: CorporateGroupService.dissolutionStatus(virksomhed),
+            restructurings: CorporateGroupService.ownRestructurings(virksomhed),
+            registerUpdatedAt: virksomhed.sidstOpdateret ?? null,
             listed: attribute("BØRSNOTERET") === "true",
             purpose: attribute("FORMÅL"),
             hasShareClasses: attribute("KAPITALKLASSER") === "true",
@@ -296,8 +360,25 @@ export default abstract class CorporateGroupService {
             votingRightsPercentage: bandOf(toDecimal(valueAt(votingRights, effective)?.vaerdi)),
             fullyLiable: isFullyLiable,
             participantRole: participantRoleOf(details.corporateForm.abbreviation, isOwner, isFullyLiable),
+            retrievedAt: new Date().toISOString(),
             ...details,
         };
+
+        if (options.dates) {
+            company.snapshots = options.dates.map((date): OwnershipSnapshot => {
+                const owned = valueAt(ownership, date);
+                const liable = valueAt(fullyLiable, date) !== undefined;
+                const form = valueAt(virksomhed.virksomhedsform, date)?.kortBeskrivelse ?? details.corporateForm.abbreviation;
+                return {
+                    date,
+                    member: owned !== undefined || (includeFullyLiable && liable),
+                    ownershipPercentage: bandOf(toDecimal(owned?.vaerdi)),
+                    votingRightsPercentage: bandOf(toDecimal(valueAt(votingRights, date)?.vaerdi)),
+                    fullyLiable: liable,
+                    participantRole: participantRoleOf(form, owned !== undefined, liable),
+                };
+            });
+        }
 
         if (history) {
             const fullHistory = buildOwnershipHistory(ownership, votingRights, noticeDates);
@@ -309,6 +390,7 @@ export default abstract class CorporateGroupService {
         }
 
         if (window) {
+            company.restructurings = company.restructurings.filter((r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, window));
             company.events = deriveEvents(stints, company.ownershipHistory ?? [], window, details.dateOfDissolution);
         }
 
@@ -493,6 +575,7 @@ export default abstract class CorporateGroupService {
             history: options?.history ?? false,
             window: options?.window ?? null,
             includeFullyLiable: options?.includeFullyLiable ?? false,
+            dates: options?.dates ?? null,
         };
         // In the period view the root's values are read as of the window's last day.
         const rootAsOf = lookup.window ? lookup.window.to : lookup.asOf;
@@ -521,13 +604,32 @@ export default abstract class CorporateGroupService {
             votingRightsPercentage: bandOf(null),
             fullyLiable: false,
             participantRole: null,
+            retrievedAt: new Date().toISOString(),
             ...CorporateGroupService.extractCompanyDetails(parentCompany, rootAsOf),
             ...(lookup.history || lookup.window ? { ownershipHistory: [], membership: null } : {}),
             ...(lookup.window ? { events: [] } : {}),
+            ...(lookup.dates
+                ? {
+                      snapshots: lookup.dates.map((date) => ({
+                          date,
+                          member: true,
+                          ownershipPercentage: bandOf(null),
+                          votingRightsPercentage: bandOf(null),
+                          fullyLiable: false,
+                          participantRole: null,
+                      })),
+                  }
+                : {}),
             subsidiaries: subsidiaries,
         };
+        if (lookup.window) {
+            corporateGroup.restructurings = corporateGroup.restructurings.filter(
+                (r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, lookup.window!),
+            );
+        }
 
         if (lookup.window) CorporateGroupService.markOwnerChanges(corporateGroup, lookup.window);
+        await CorporateGroupService.resolveRestructuringCounterparts(corporateGroup, lookup.window);
 
         await CorporateGroupService.attachGroupEntitiesFromNotes(corporateGroup);
 
@@ -536,6 +638,82 @@ export default abstract class CorporateGroupService {
         }
 
         return corporateGroup;
+    }
+
+    /**
+     * Resolves the other parties of every merger/demerger in the group with one
+     * register query per batch of event ids (the ids are shared by all parties),
+     * and — in the period/dates views — turns them into MERGED_INTO/MERGED_FROM/SPLIT_INTO/SPLIT_FROM events.
+     */
+    private static async resolveRestructuringCounterparts(root: CorporateGroup, window: { from: string; to: string } | null): Promise<void> {
+        const nodes: CorporateGroup[] = [];
+        const walk = (node: CorporateGroup): void => {
+            nodes.push(node);
+            (node.subsidiaries ?? []).forEach(walk);
+        };
+        walk(root);
+
+        const eventIds = [...new Set(nodes.flatMap((node) => node.restructurings.map((r) => r.eventId)))];
+        if (eventIds.length === 0) return;
+
+        type Party = { cvr: number; name: string; role: "TRANSFERRING" | "RECEIVING"; dissolved: boolean };
+        const partiesByEvent = new Map<number, Party[]>();
+
+        for (let i = 0; i < eventIds.length; i += 100) {
+            const batch = eventIds.slice(i, i + 100);
+            let response: DanishBusinessRegistrationCompanyAPIResponse;
+            try {
+                response = await CorporateGroupService.queryDanishBusinessRegistrationAPI({
+                    size: 1000,
+                    _source: [
+                        "Vrvirksomhed.cvrNummer",
+                        "Vrvirksomhed.navne",
+                        "Vrvirksomhed.virksomhedMetadata.nyesteNavn",
+                        "Vrvirksomhed.fusioner",
+                        "Vrvirksomhed.spaltninger",
+                        "Vrvirksomhed.livsforloeb",
+                    ],
+                    query: {
+                        bool: {
+                            should: [
+                                { terms: { "Vrvirksomhed.fusioner.enhedsNummerOrganisation": batch } },
+                                { terms: { "Vrvirksomhed.spaltninger.enhedsNummerOrganisation": batch } },
+                            ],
+                            minimum_should_match: 1,
+                        },
+                    },
+                });
+            } catch {
+                // Counterparts are an enrichment; the group itself must still be served.
+                return;
+            }
+            for (const hit of response.hits.hits) {
+                const party = hit._source.Vrvirksomhed;
+                const name = party.virksomhedMetadata?.nyesteNavn?.navn ?? valueAt(party.navne, null)?.navn ?? String(party.cvrNummer);
+                for (const own of CorporateGroupService.ownRestructurings(party)) {
+                    if (!batch.includes(own.eventId)) continue;
+                    const list = partiesByEvent.get(own.eventId) ?? [];
+                    list.push({ cvr: party.cvrNummer, name, role: own.role, dissolved: own.dissolved });
+                    partiesByEvent.set(own.eventId, list);
+                }
+            }
+        }
+
+        for (const node of nodes) {
+            for (const r of node.restructurings) {
+                r.counterparts = (partiesByEvent.get(r.eventId) ?? []).filter((p) => p.cvr !== node.cvr);
+            }
+            if (!window || !node.events) continue;
+            for (const r of node.restructurings) {
+                if (!r.date) continue;
+                const type =
+                    r.type === "MERGER"
+                        ? r.role === "TRANSFERRING" ? "MERGED_INTO" : "MERGED_FROM"
+                        : r.role === "TRANSFERRING" ? "SPLIT_INTO" : "SPLIT_FROM";
+                node.events.push({ date: r.date, type, counterparts: r.counterparts, dissolved: r.dissolved });
+            }
+            node.events.sort((a, b) => a.date.localeCompare(b.date));
+        }
     }
 
     /**

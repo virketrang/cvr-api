@@ -6,6 +6,7 @@ import {
     bandOf,
     buildOwnershipHistory,
     deriveEvents,
+    dissolutionReasonOf,
     latestDayIn,
     membershipOf,
     overlapsWindow,
@@ -70,9 +71,9 @@ describe("attributeValueAt", () => {
 
 describe("bandOf", () => {
     it("widens the registry's lower bound to its band and marks only 100 pct. as accurate", () => {
-        assert.deepEqual(bandOf(0.5), { interval: { from: 0.5, to: 0.6666 }, accurate: false });
-        assert.deepEqual(bandOf(1), { interval: { from: 1, to: 1 }, accurate: true });
-        assert.deepEqual(bandOf(null), { interval: { from: null, to: null }, accurate: false });
+        assert.deepEqual(bandOf(0.5), { interval: { from: 0.5, to: 0.6666 }, accurate: false, label: "50–66,66 %" });
+        assert.deepEqual(bandOf(1), { interval: { from: 1, to: 1 }, accurate: true, label: "100 %" });
+        assert.deepEqual(bandOf(null), { interval: { from: null, to: null }, accurate: false, label: null });
     });
 });
 
@@ -146,7 +147,7 @@ describe("CorporateGroupService.mapSubsidiary", () => {
     });
 
     it("is a subsidiary as of a date inside the ownership period, with the name it had then", () => {
-        const company = CorporateGroupService.mapSubsidiary(virksomhed, parentCvr, { asOf: "2017-06-30", history: false, window: null, includeFullyLiable: false });
+        const company = CorporateGroupService.mapSubsidiary(virksomhed, parentCvr, { asOf: "2017-06-30", history: false, window: null, includeFullyLiable: false, dates: null });
         assert.equal(company?.name, "Gammelt Navn ApS");
         assert.equal(company?.ownershipPercentage.interval.from, 1);
         assert.equal(company?.votingRightsPercentage.accurate, true);
@@ -156,14 +157,14 @@ describe("CorporateGroupService.mapSubsidiary", () => {
     });
 
     it("adds ownershipHistory and membership when history is requested", () => {
-        const company = CorporateGroupService.mapSubsidiary(virksomhed, parentCvr, { asOf: "2017-06-30", history: true, window: null, includeFullyLiable: false });
+        const company = CorporateGroupService.mapSubsidiary(virksomhed, parentCvr, { asOf: "2017-06-30", history: true, window: null, includeFullyLiable: false, dates: null });
         assert.deepEqual(company?.membership, { from: "2016-07-25", to: "2018-10-22" });
         assert.equal(company?.ownershipHistory?.length, 1);
         assert.equal(company?.ownershipHistory?.[0].noticeDate, "2016-07-25");
     });
 
     it("is not a subsidiary of a company that was never its owner", () => {
-        assert.equal(CorporateGroupService.mapSubsidiary(virksomhed, 11111111, { asOf: "2017-06-30", history: true, window: null, includeFullyLiable: false }), null);
+        assert.equal(CorporateGroupService.mapSubsidiary(virksomhed, 11111111, { asOf: "2017-06-30", history: true, window: null, includeFullyLiable: false, dates: null }), null);
     });
 });
 
@@ -291,7 +292,7 @@ describe("CorporateGroupService.mapSubsidiary — period view and roles", () => 
         ],
     } as unknown as Virksomhed;
 
-    const base = { asOf: null, history: false, window: null, includeFullyLiable: false };
+    const base = { asOf: null, history: false, window: null, includeFullyLiable: false, dates: null };
 
     it("is out of the group today by ownership alone, but in it as komplementar when fully liable relations count", () => {
         assert.equal(CorporateGroupService.mapSubsidiary(ks, parentCvr, base), null);
@@ -324,5 +325,34 @@ describe("CorporateGroupService.mapSubsidiary — period view and roles", () => 
         assert.deepEqual(company?.membership, { from: "2002-01-01", to: null });
         assert.equal(company?.participantRole, "KOMPLEMENTAR");
         assert.deepEqual(company?.events, []);
+    });
+});
+
+describe("restructuring roles and dissolution reasons", () => {
+    const flags = (inbound: boolean, outbound: boolean) => ({
+        indgaaende: inbound ? [{ sekvensnr: 0, type: "FUNKTION", vaerditype: "string", vaerdier: [] }] : [],
+        udgaaende: outbound ? [{ sekvensnr: 0, type: "FUNKTION", vaerditype: "string", vaerdier: [] }] : [],
+    });
+
+    it("reads the register's flags per event type as observed on real cases", () => {
+        const classify = CorporateGroupService.classifyRestructuringRole;
+        // KABELTRIMMEREN: dissolved into T.J. Transmission (inbound only) — T.J. carries both.
+        assert.equal(classify("MERGER", flags(true, false)), "TRANSFERRING");
+        assert.equal(classify("MERGER", flags(true, true)), "RECEIVING");
+        // B.I. Holding II dissolved by demerger (inbound only); Nyhave/Bjerg List created (outbound only);
+        // T.J. Transmission contributed a branch and lived on (both).
+        assert.equal(classify("DEMERGER", flags(true, false)), "TRANSFERRING");
+        assert.equal(classify("DEMERGER", flags(false, true)), "RECEIVING");
+        assert.equal(classify("DEMERGER", flags(true, true)), "TRANSFERRING");
+    });
+
+    it("maps the register's last status text to a reason", () => {
+        assert.equal(dissolutionReasonOf("OPLØST EFTER FUSION"), "MERGER");
+        assert.equal(dissolutionReasonOf("OPLØST EFTER SPALTNING"), "DEMERGER");
+        assert.equal(dissolutionReasonOf("OPLØST EFTER KONKURS"), "BANKRUPTCY");
+        assert.equal(dissolutionReasonOf("OPLØST EFTER FRIVILLIG LIKVIDATION"), "LIQUIDATION");
+        assert.equal(dissolutionReasonOf("OPLØST EFTER ERKLÆRING"), "OTHER");
+        assert.equal(dissolutionReasonOf("NORMAL"), null);
+        assert.equal(dissolutionReasonOf(null), null);
     });
 });

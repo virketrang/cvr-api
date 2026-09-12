@@ -12,7 +12,8 @@ export const route = createRoute({
         "Returns the corporate group structure for a given danish business registration number (CVR-number). " +
         "Use ?asOf=yyyy-mm-dd to see the group as it was on a date (ownership, names, membership), " +
         "?history=true to include every registered ownership value over time per company, " +
-        "?from=&to= for the period view (every company that was in the group at any point, with history and events), and " +
+        "?from=&to= for the period view (every company that was in the group at any point, with history and events), " +
+        "?dates=d1,d2,… for several snapshots in one call (period view plus one snapshot per date), and " +
         "?includeFullyLiable=true to also follow komplementar-style relations without an ownership share.",
     request: {
         params: paramSchema,
@@ -36,7 +37,7 @@ export const flattenedRoute = createRoute({
     path: "/api/corporate-groups/:cvrNumber/flattened",
     description:
         "Returns the corporate group structure for a given danish business registration number (CVR-number) as a flat array. " +
-        "Supports the same ?asOf, ?history, ?from/?to and ?includeFullyLiable query parameters as the tree endpoint. " +
+        "Supports the same ?asOf, ?history, ?from/?to, ?dates and ?includeFullyLiable query parameters as the tree endpoint. " +
         "In the period view a company owned by two group companies in turn appears once per parent.",
     request: {
         params: paramSchema,
@@ -69,6 +70,7 @@ export const router = async (
                     history?: string;
                     from?: string;
                     to?: string;
+                    dates?: string;
                     includeFullyLiable?: string;
                 };
             };
@@ -81,6 +83,7 @@ export const router = async (
                     history: boolean;
                     from?: string;
                     to?: string;
+                    dates?: string[];
                     includeFullyLiable: boolean;
                 };
             };
@@ -88,12 +91,13 @@ export const router = async (
     >,
 ) => {
     const cvrNumber = ctx.req.param("cvrNumber");
-    const { asOf, history, from, to, includeFullyLiable } = ctx.req.valid("query");
+    const { asOf, history, from, to, dates, includeFullyLiable } = ctx.req.valid("query");
 
     const corporateGroup = await CorporateGroupService.getCorporateGroup(Number(cvrNumber), {
         asOf: asOf ?? null,
         history,
-        window: from !== undefined && to !== undefined ? { from, to } : null,
+        window: from !== undefined && to !== undefined ? { from, to } : dates ? { from: dates[0], to: dates[dates.length - 1] } : null,
+        dates: dates ?? null,
         includeFullyLiable,
     });
 
@@ -121,6 +125,7 @@ export const flattenedRouter = async (
                     history?: string;
                     from?: string;
                     to?: string;
+                    dates?: string;
                     includeFullyLiable?: string;
                 };
             };
@@ -133,6 +138,7 @@ export const flattenedRouter = async (
                     history: boolean;
                     from?: string;
                     to?: string;
+                    dates?: string[];
                     includeFullyLiable: boolean;
                 };
             };
@@ -140,13 +146,14 @@ export const flattenedRouter = async (
     >,
 ) => {
     const cvrNumber = ctx.req.param("cvrNumber");
-    const { asOf, history, from, to, includeFullyLiable } = ctx.req.valid("query");
+    const { asOf, history, from, to, dates, includeFullyLiable } = ctx.req.valid("query");
 
     const corporateGroup = await CorporateGroupService.getCorporateGroup(Number(cvrNumber), {
         flatten: true,
         asOf: asOf ?? null,
         history,
-        window: from !== undefined && to !== undefined ? { from, to } : null,
+        window: from !== undefined && to !== undefined ? { from, to } : dates ? { from: dates[0], to: dates[dates.length - 1] } : null,
+        dates: dates ?? null,
         includeFullyLiable,
     });
 

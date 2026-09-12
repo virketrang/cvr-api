@@ -71,7 +71,7 @@ export function bandOf(decimal: number | null): OwnershipPercentage {
         }
     })();
 
-    return { interval, accurate: decimal === 1 };
+    return { interval, accurate: decimal === 1, label: bandLabel(interval) };
 }
 
 export function toDecimal(value: string | null | undefined): number | null {
@@ -176,7 +176,16 @@ export function latestDayIn(stints: readonly DateRange[], window: DateWindow): s
     );
 }
 
-export type GroupEventType = "JOINED" | "LEFT" | "OWNERSHIP_CHANGED" | "OWNER_CHANGED" | "DISSOLVED";
+export type GroupEventType =
+    | "JOINED"
+    | "LEFT"
+    | "OWNERSHIP_CHANGED"
+    | "OWNER_CHANGED"
+    | "DISSOLVED"
+    | "MERGED_INTO"
+    | "MERGED_FROM"
+    | "SPLIT_INTO"
+    | "SPLIT_FROM";
 
 /** Something that happened to a company's place in the group on a date. */
 export interface GroupEvent {
@@ -187,6 +196,29 @@ export interface GroupEvent {
     after?: Pick<OwnershipSegment, "ownershipPercentage" | "votingRightsPercentage">;
     /** OWNER_CHANGED: the group company that owned it before `date`. */
     previousParent?: { name: string; cvr: number };
+    /** MERGED_INTO, MERGED_FROM, SPLIT_INTO, SPLIT_FROM: the other parties of the merger/demerger. */
+    counterparts?: Array<{ cvr: number; name: string; role: "TRANSFERRING" | "RECEIVING"; dissolved: boolean }>;
+    /** MERGED_INTO/SPLIT_INTO: whether this company ceased to exist in the event. */
+    dissolved?: boolean;
+}
+
+/** Display label for an ownership band: "25–33,32 %", "100 %", or null. */
+export function bandLabel(interval: { from: number | null; to: number | null }): string | null {
+    if (interval.from === null || interval.to === null) return null;
+    const pct = (v: number) => (Math.round(v * 10000) / 100).toLocaleString("da-DK", { maximumFractionDigits: 2 });
+    return interval.from === interval.to ? `${pct(interval.from)} %` : `${pct(interval.from)}–${pct(interval.to)} %`;
+}
+
+/** Maps the registry's last status text to a dissolution reason. */
+export function dissolutionReasonOf(status: string | null): "MERGER" | "DEMERGER" | "LIQUIDATION" | "BANKRUPTCY" | "OTHER" | null {
+    if (!status) return null;
+    const s = status.toUpperCase();
+    if (!/OPLØST|SLETTET|TVANGSOPLØST|OPHØRT/.test(s)) return null;
+    if (/FUSION/.test(s)) return "MERGER";
+    if (/SPALTNING/.test(s)) return "DEMERGER";
+    if (/KONKURS/.test(s)) return "BANKRUPTCY";
+    if (/LIKVIDATION/.test(s)) return "LIQUIDATION";
+    return "OTHER";
 }
 
 function sameBand(a: OwnershipPercentage, b: OwnershipPercentage): boolean {

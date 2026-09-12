@@ -448,6 +448,19 @@ const COLUMN_LABELS: Array<[ColumnKey | "skip", RegExp]> = [
 const SECTION_LABEL =
     /^(?:(datter(?:virksomhed|selskab)(?:er)?|tilknyttede\s+virksomheder|subsidiaries|group\s+enterprises)|(associerede\s+virksomheder|kapitalinteresser|associates))\s*:?\s*/i;
 
+/**
+ * Drops a leading row that has no share and is glued to the next one, typically
+ * the reporting company itself: "Q-Interline A/S DanmarkQ-Interline GmbH Tyskland"
+ * → "Q-Interline GmbH Tyskland". Only a country name directly followed by an
+ * uppercase letter counts as such a seam.
+ */
+function dropGluedLeadingRow(chunk: string): string {
+    const countries = COUNTRIES.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const seam = new RegExp(`^.{3,}?(?:${countries})(?=\\p{Lu})`, "u");
+    const match = seam.exec(chunk);
+    return match ? chunk.slice(match[0].length) : chunk;
+}
+
 /** True when a would-be row name is really a stray column label ("Navn", "Ejerandel i %"). */
 function looksLikeListHeaderCell(text: string): boolean {
     return (
@@ -617,10 +630,22 @@ function parseListSegment(
     let relation = header.relation;
     let cursor = 0;
     let match: RegExpExecArray | null;
+    const votingFollowsShare = usesPercentSign && columns[pctIndex + 1] === "voting";
 
     while ((match = pctToken.exec(body)) !== null) {
         let chunk = body.slice(cursor, match.index);
         cursor = pctToken.lastIndex;
+
+        // A voting-rights column right after the share: "…100 % 100 %".
+        let votingShare: number | null = null;
+        if (votingFollowsShare) {
+            const voting = /^\s*(\d{1,3}(?:[.,]\d{1,2})?)\s*%/.exec(body.slice(cursor));
+            if (voting) {
+                votingShare = parsePercentage(voting[1]);
+                cursor += voting[0].length;
+                pctToken.lastIndex = cursor;
+            }
+        }
 
         // Amounts that trail the previous row's share belong to no name.
         if (amountsAfterPct) chunk = chunk.replace(/^[\s\d.,\-–%]+/, "");
@@ -631,6 +656,7 @@ function parseListSegment(
             relation = section[1] ? "subsidiary" : "associate";
             chunk = chunk.slice(section[0].length).trim();
         }
+        chunk = dropGluedLeadingRow(chunk);
         if (!chunk) continue;
         rows++;
 
@@ -650,17 +676,28 @@ function parseListSegment(
 
         let place: string | null = null;
         if (hasPlace) {
-            // "Hadsund, Danmark" — but "J-Maskiner, Rødekro" is name + city, so the
-            // comma-separated second word only counts when it is a known country.
-            const withCountry = /(?:,\s*)?(\p{Lu}[\p{Ll}.\-]+(?:\s\p{Lu}[\p{Ll}.\-]+)?,\s*(\p{Lu}[\p{Ll}.\-]+))$/u.exec(rest);
-            const placeMatch =
-                withCountry && COUNTRIES.some((c) => c.toLowerCase() === withCountry[2].toLowerCase())
-                    ? withCountry
-                    : /(?:,\s*)?(\p{Lu}[\p{Ll}.\-]+(?:\s\p{Lu}[\p{Ll}.\-]+)?)$/u.exec(rest);
-            if (placeMatch && placeMatch[1].length < rest.length) {
-                place = placeMatch[1].trim();
-                rest = rest.slice(0, placeMatch.index).trim();
+            // A known country at the end is stripped as written ("USA", "Tyskland",
+            // "Hadsund, Danmark"); then the last capitalised word is the city — unless
+            // the remainder ends in a legal form ("Q-Interline GmbH"), which means the
+            // note only gave a country. "J-Maskiner, Rødekro" stays name + city.
+            const restLower = rest.toLowerCase();
+            const countryHit = COUNTRIES.find(
+                (c) => restLower.endsWith(c.toLowerCase()) && /[\s,]/.test(rest[rest.length - c.length - 1] ?? " "),
+            );
+            let countryText: string | null = null;
+            if (countryHit) {
+                countryText = rest.slice(-countryHit.length);
+                rest = rest.slice(0, -countryHit.length).replace(/[\s,]+$/, "");
             }
+            let city: string | null = null;
+            if (!trailingLegalForm(rest)) {
+                const cityMatch = /(?:,\s*)?(\p{Lu}[\p{Ll}.\-]+(?:\s\p{Lu}[\p{Ll}.\-]+)?)$/u.exec(rest);
+                if (cityMatch && cityMatch[1].length < rest.length) {
+                    city = cityMatch[1].trim();
+                    rest = rest.slice(0, cityMatch.index).trim();
+                }
+            }
+            place = city && countryText ? `${city}, ${countryText}` : (city ?? countryText);
         }
 
         let cvrNumber: string | null = null;
@@ -690,7 +727,7 @@ function parseListSegment(
             registeredOffice: isCountry ? null : country ? place!.slice(0, -country.length).replace(/,\s*$/, "") : place,
             legalForm: legalForm ?? trailingLegalForm(name),
             ownershipPercentage: shareTrusted ? share : null,
-            votingRightsPercentage: null,
+            votingRightsPercentage: votingShare,
             source: "noteText",
             sourceConcept,
             scope,
@@ -771,6 +808,7 @@ export function parsePlainText(
         const headerCut = /.*(?:ownership|ejerandel)[\s%i]*/is.exec(chunk);
         if (headerCut) chunk = chunk.slice(headerCut[0].length).trim();
 
+        chunk = dropGluedLeadingRow(chunk);
         if (!chunk) continue;
 
         const percentage = parsePercentage(match[1] ?? match[2]);

@@ -78,6 +78,26 @@ describe("parseColumnList — glued column lists in Danish investment notes", ()
         assert.deepEqual(pick(parseColumnList(text, "DisclosureOfInvestments", null)), [["J-Maskiner", "Rødekro", null, 10, "associate"]]);
     });
 
+    it("drops the reporting company's own share-less row when it is glued to the first subsidiary", () => {
+        const text =
+            "Konsoliderede virksomhederHjemsted EjerandelQ-Interline A/S DanmarkQ-Interline GmbH Tyskland 100%Q-Interline SARL Frankrig 100%Q-Interline Inc. USA 100%Note 5 Færdige udviklingsprojekter";
+        const rows = pick(parseColumnList(text, "DisclosureOfIntangibleAssets", null));
+        assert.deepEqual(rows.map((r) => [r[0], r[2], r[3]]), [
+            ["Q-Interline GmbH", "Tyskland", 100],
+            ["Q-Interline SARL", "Frankrig", 100],
+            ["Q-Interline Inc.", "USA", 100],
+        ]);
+    });
+
+    it("reads a voting-rights column that follows the share", () => {
+        const text = "Navn Hjemsted Ejerandel Stemmeandel Alpha ApS Aarhus 60 % 75 % Beta ApS Odense 40 % 25 %";
+        const rows = parseColumnList(text, "DisclosureOfInvestments", null).map((e) => [e.name, e.ownershipPercentage, e.votingRightsPercentage]);
+        assert.deepEqual(rows, [
+            ["Alpha ApS", 60, 75],
+            ["Beta ApS", 40, 25],
+        ]);
+    });
+
     it("ignores accounting-policy prose that merely mentions ejerandel", () => {
         const text =
             "Kapitalandele i dattervirksomheder indregnes og måles efter indre værdis metode. I balancen indregnes under posten “Kapitalandele i dattervirksomheder” den forholdsmæssige ejerandel af virksomhedernes regnskabsmæssige indre værdi.";

@@ -1,6 +1,7 @@
 import { z } from "@hono/zod-openapi";
 
 import { dateQueryParam } from "../../utils/date-param.js";
+import { parseFlexibleDate } from "../../utils/format-date.js";
 import { groupEntityFromNotesSchema } from "../annual-reports/annual-report.schema.js";
 
 const percentageIntervalSchema = (subject: string) =>
@@ -27,6 +28,10 @@ const percentageSchema = (subject: string) =>
                 description: `a boolean indicating if the ${subject} is accurate`,
                 example: true,
             }),
+            label: z.string().nullable().optional().openapi({
+                description: `Display label for the ${subject} band, e.g. "25–33,32 %" or "100 %"`,
+                example: "100 %",
+            }),
         })
         .openapi({
             description: `Information about the ${subject}`,
@@ -43,11 +48,11 @@ const corporateEventSchema = z
             example: "2000-01-14",
         }),
         incoming: z.boolean().openapi({
-            description: "True when the company was on the receiving end (indgående)",
+            description: "True when the registry lists the company under 'indgaaende': it went INTO the event as a transferring company",
             example: true,
         }),
         outgoing: z.boolean().openapi({
-            description: "True when the company was on the giving end (udgående)",
+            description: "True when listed under 'udgaaende': it came OUT of the event as a receiving/continuing company",
             example: false,
         }),
     })
@@ -168,6 +173,57 @@ const companySchema = z.object({
         description: "The date the company ceased to exist, or null while it exists",
         example: null,
     }),
+    dissolutionReason: z.enum(["MERGER", "DEMERGER", "LIQUIDATION", "BANKRUPTCY", "OTHER"]).nullable().openapi({
+        description: "Why the company ceased to exist, derived from its last registered status; null while it exists",
+        example: null,
+    }),
+    dissolutionStatus: z.string().nullable().openapi({
+        description: "The registry's own last status text, e.g. 'OPLØST EFTER FUSION'; null while the company is normal",
+        example: null,
+    }),
+    restructurings: z
+        .array(
+            z.object({
+                eventId: z.number().openapi({ description: "The registry's event id — identical on every party, use it to aggregate", example: 4010348162 }),
+                type: z.enum(["MERGER", "DEMERGER"]),
+                date: z.string().nullable().openapi({ example: "2025-03-21" }),
+                role: z.enum(["TRANSFERRING", "RECEIVING"]).openapi({
+                    description: "TRANSFERRING = indskydende (contributed its assets); RECEIVING = modtagende/continuing",
+                }),
+                dissolved: z.boolean().openapi({ description: "Whether this company ceased to exist in the event" }),
+                counterparts: z.array(
+                    z.object({
+                        cvr: z.number(),
+                        name: z.string(),
+                        role: z.enum(["TRANSFERRING", "RECEIVING"]),
+                        dissolved: z.boolean(),
+                    }),
+                ).openapi({ description: "The other parties, whether or not they were ever part of the group" }),
+            }),
+        )
+        .openapi({
+            description:
+                "Mergers and demergers the company took part in, with the other parties resolved from the register. " +
+                "All of them by default; only those inside the span in the period (from/to) and multi-snapshot (dates) views.",
+        }),
+    snapshots: z
+        .array(
+            z.object({
+                date: z.string().openapi({ example: "2024-12-31" }),
+                member: z.boolean().openapi({ description: "Whether the company was in the group under this parent on the date" }),
+                ownershipPercentage: percentageSchema("ownership percentage"),
+                votingRightsPercentage: percentageSchema("voting rights percentage"),
+                fullyLiable: z.boolean(),
+                participantRole: z.string().nullable(),
+            }),
+        )
+        .optional()
+        .openapi({ description: "One entry per requested date. Only present in the multi-snapshot view (dates=…)." }),
+    retrievedAt: z.string().openapi({ description: "When this response was produced (ISO timestamp)", example: "2026-09-12T08:00:00.000Z" }),
+    registerUpdatedAt: z.string().nullable().openapi({
+        description: "When the register last updated this company's record (sidstOpdateret)",
+        example: "2026-08-01T10:15:00.000+02:00",
+    }),
     ownershipPercentage: percentageSchema("ownership percentage"),
     votingRightsPercentage: percentageSchema("voting rights percentage"),
     ownershipHistory: z
@@ -214,12 +270,26 @@ const companySchema = z.object({
         .array(
             z.object({
                 date: z.string().openapi({ example: "2023-04-01" }),
-                type: z.enum(["JOINED", "LEFT", "OWNERSHIP_CHANGED", "OWNER_CHANGED", "DISSOLVED"]).openapi({
-                    description:
-                        "JOINED/LEFT: the parent's ownership began/ended. OWNERSHIP_CHANGED: a new ownership or voting " +
-                        "band was registered. OWNER_CHANGED: the company moved from another group company to this parent. " +
-                        "DISSOLVED: the company ceased to exist.",
-                }),
+                type: z
+                    .enum([
+                        "JOINED",
+                        "LEFT",
+                        "OWNERSHIP_CHANGED",
+                        "OWNER_CHANGED",
+                        "DISSOLVED",
+                        "MERGED_INTO",
+                        "MERGED_FROM",
+                        "SPLIT_INTO",
+                        "SPLIT_FROM",
+                    ])
+                    .openapi({
+                        description:
+                            "JOINED/LEFT: the parent's ownership began/ended. OWNERSHIP_CHANGED: a new ownership or voting " +
+                            "band was registered. OWNER_CHANGED: the company moved from another group company to this parent. " +
+                            "DISSOLVED: the company ceased to exist. MERGED_INTO/SPLIT_INTO: the company was the transferring " +
+                            "party of a merger/demerger (dissolved says whether it ceased). MERGED_FROM/SPLIT_FROM: it was the " +
+                            "receiving party. Counterparts list the other parties.",
+                    }),
                 before: z
                     .object({
                         ownershipPercentage: percentageSchema("ownership percentage"),
@@ -238,11 +308,23 @@ const companySchema = z.object({
                         cvr: z.number(),
                     })
                     .optional(),
+                counterparts: z
+                    .array(
+                        z.object({
+                            cvr: z.number(),
+                            name: z.string(),
+                            role: z.enum(["TRANSFERRING", "RECEIVING"]),
+                            dissolved: z.boolean(),
+                        }),
+                    )
+                    .optional(),
+                dissolved: z.boolean().optional(),
             }),
         )
         .optional()
         .openapi({
-            description: "What happened to the company's place in the group inside the period. Only present in the period view (from/to).",
+            description:
+                "What happened to the company's place in the group inside the period. Only present in the period view (from/to) and the multi-snapshot view (dates).",
         }),
     fullyLiable: z.boolean().openapi({
         description: "Whether the parent is registered as a fully liable participant (fuldt ansvarlig deltager), e.g. komplementar in a K/S",
@@ -429,6 +511,32 @@ export const querySchema = z
         "2022-01-01",
     ),
     to: dateQueryParam("to", "Periodevisning, slut. Selskabernes værdier læses pr. den sidste dag, de var i koncernen inden for perioden.", "2024-12-31"),
+    dates: z
+        .string()
+        .transform((value, ctx) => {
+            const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+            const isoDates = parts.map((part) => ({ part, iso: parseFlexibleDate(part) }));
+            const bad = isoDates.find((d) => d.iso === null);
+            if (bad) {
+                ctx.addIssue({ code: "custom", message: `Datoen "${bad.part}" i parameteren dates kunne ikke genkendes som en gyldig kalenderdato.` });
+                return z.NEVER;
+            }
+            const unique = [...new Set(isoDates.map((d) => d.iso as string))].sort();
+            if (unique.length === 0 || unique.length > 12) {
+                ctx.addIssue({ code: "custom", message: "Parameteren dates skal indeholde 1–12 datoer adskilt af komma." });
+                return z.NEVER;
+            }
+            return unique;
+        })
+        .optional()
+        .openapi({
+            description:
+                "Flere øjebliksbilleder i ét kald: kommaseparerede datoer (fx overdragelsesdagen og de tre seneste balancedage). " +
+                "Svaret dækker alle selskaber, der var i koncernen på mindst én af datoerne, med `snapshots` pr. dato, " +
+                "historik, medlemskab og hændelser for spændet fra første til sidste dato. Kan ikke kombineres med asOf eller from/to.",
+            example: "2025-07-05,2024-12-31,2023-12-31,2022-12-31",
+            param: { in: "query", name: "dates", required: false },
+        }),
     includeFullyLiable: z
         .enum(["true", "false"])
         .optional()
@@ -450,5 +558,8 @@ export const querySchema = z
         }
         if (query.asOf !== undefined && query.from !== undefined) {
             ctx.addIssue({ code: "custom", message: "asOf kan ikke kombineres med from/to. Brug enten et øjebliksbillede (asOf) eller en periode (from/to)." });
+        }
+        if (query.dates !== undefined && (query.asOf !== undefined || query.from !== undefined)) {
+            ctx.addIssue({ code: "custom", message: "dates kan ikke kombineres med asOf eller from/to." });
         }
     });
