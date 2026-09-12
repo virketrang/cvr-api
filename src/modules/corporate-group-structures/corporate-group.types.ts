@@ -288,6 +288,20 @@ export interface Restructuring {
 /** Why a company ceased to exist, derived from its last registered status. */
 export type DissolutionReason = "MERGER" | "DEMERGER" | "LIQUIDATION" | "BANKRUPTCY" | "OTHER";
 
+/** A registered owner (or fully liable participant) of a company on a date — inside or outside the group. */
+export interface Owner {
+    /** CVR number for companies; null for persons and other participants. */
+    cvr: number | null;
+    name: string;
+    type: "COMPANY" | "PERSON" | "OTHER";
+    ownershipPercentage: OwnershipPercentage;
+    votingRightsPercentage: OwnershipPercentage;
+    fullyLiable: boolean;
+    participantRole: string | null;
+    /** Whether the owner is itself a company in this group response (so its share counts towards "tilsammen"). */
+    inGroup: boolean;
+}
+
 /** One requested date in the multi-snapshot view. */
 export interface OwnershipSnapshot {
     date: string;
@@ -297,6 +311,8 @@ export interface OwnershipSnapshot {
     votingRightsPercentage: OwnershipPercentage;
     fullyLiable: boolean;
     participantRole: string | null;
+    /** Every registered owner of the company on the date. */
+    owners: Owner[];
 }
 
 /** The company's current registered address (beliggenhedsadresse). */
@@ -385,6 +401,12 @@ export interface Company {
     restructurings: Restructuring[];
     /** One entry per requested date. Only in the multi-snapshot view (dates=…). */
     snapshots?: OwnershipSnapshot[];
+    /**
+     * Every owner registered for the company on the date the entry is read as of
+     * (Ejerregisteret ≥ 5 % bands, plus fully liable participants): group companies
+     * (inGroup = true), external companies, persons. `parent` is one of them.
+     */
+    owners: Owner[];
     /** When this response was produced (ISO timestamp). */
     retrievedAt: string;
     /** When the register last updated this company's record (Vrvirksomhed.sidstOpdateret). */

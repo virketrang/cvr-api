@@ -37,6 +37,21 @@ const percentageSchema = (subject: string) =>
             description: `Information about the ${subject}`,
         });
 
+const ownerSchema = z
+    .object({
+        cvr: z.number().nullable().openapi({ description: "CVR number for companies; null for persons and other participants", example: 78809019 }),
+        name: z.string().openapi({ example: "TIKA HOLDING A/S" }),
+        type: z.enum(["COMPANY", "PERSON", "OTHER"]),
+        ownershipPercentage: percentageSchema("ownership percentage"),
+        votingRightsPercentage: percentageSchema("voting rights percentage"),
+        fullyLiable: z.boolean(),
+        participantRole: z.string().nullable(),
+        inGroup: z.boolean().openapi({
+            description: "Whether the owner is itself a company in this group response — only those count towards 'tilsammen'",
+        }),
+    })
+    .openapi({ description: "A registered owner of the company on the date" });
+
 const corporateEventSchema = z
     .object({
         name: z.string().nullable().openapi({
@@ -215,10 +230,16 @@ const companySchema = z.object({
                 votingRightsPercentage: percentageSchema("voting rights percentage"),
                 fullyLiable: z.boolean(),
                 participantRole: z.string().nullable(),
+                owners: z.array(ownerSchema).openapi({ description: "Every registered owner of the company on the date" }),
             }),
         )
         .optional()
         .openapi({ description: "One entry per requested date. Only present in the multi-snapshot view (dates=…)." }),
+    owners: z.array(ownerSchema).openapi({
+        description:
+            "Every owner registered for the company on the date the entry is read as of: group companies (inGroup = true), " +
+            "external companies and persons. `parent` is one of them. Empty for the root when nothing is registered.",
+    }),
     retrievedAt: z.string().openapi({ description: "When this response was produced (ISO timestamp)", example: "2026-09-12T08:00:00.000Z" }),
     registerUpdatedAt: z.string().nullable().openapi({
         description: "When the register last updated this company's record (sidstOpdateret)",

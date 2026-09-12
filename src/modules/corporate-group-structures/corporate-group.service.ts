@@ -2,6 +2,8 @@ import type {
     Attribute,
     Company,
     CorporateEventSource as RegistryEvent,
+    DeltagerRelation,
+    Owner,
     OwnershipSnapshot,
     Restructuring,
     CompanyAddress,
@@ -298,6 +300,60 @@ export default abstract class CorporateGroupService {
         return CorporateGroupService.relationValues(virksomhed, parentCvr, "FULDT_ANSVARLIG_DELTAGERE", "FUNKTION");
     }
 
+    /** Attribute values of one type in one relation's organisations of a hovedtype (optionally a named register). */
+    private static relationOrgValues(relation: DeltagerRelation, hovedtype: string, type: string, registerName?: string): Attribute["vaerdier"] {
+        return (relation.organisationer ?? [])
+            .filter(
+                (org) =>
+                    org.hovedtype === hovedtype &&
+                    (registerName === undefined || org.organisationsNavn.some((name) => name.navn === registerName)),
+            )
+            .flatMap((org) => org.medlemsData ?? [])
+            .flatMap((data) => data.attributter)
+            .filter((attr) => attr.type === type)
+            .flatMap((attr) => attr.vaerdier);
+    }
+
+    /**
+     * Every owner registered for the company on `date` (now when null): legal
+     * owners from Ejerregisteret and fully liable participants — companies,
+     * persons and other participants alike. `inGroup` is filled in later, once
+     * the whole group is known.
+     */
+    private static ownersAt(virksomhed: Virksomhed, date: string | null): Owner[] {
+        const form = valueAt(virksomhed.virksomhedsform, date)?.kortBeskrivelse ?? virksomhed.virksomhedMetadata?.nyesteVirksomhedsform?.kortBeskrivelse ?? null;
+        const owners: Owner[] = [];
+
+        for (const relation of virksomhed.deltagerRelation ?? []) {
+            const participant = relation.deltager;
+            if (!participant) continue;
+
+            const ownership = valueAt(CorporateGroupService.relationOrgValues(relation, "REGISTER", "EJERANDEL_PROCENT", "EJERREGISTER"), date);
+            const voting = valueAt(CorporateGroupService.relationOrgValues(relation, "REGISTER", "EJERANDEL_STEMMERET_PROCENT", "EJERREGISTER"), date);
+            const liable = valueAt(CorporateGroupService.relationOrgValues(relation, "FULDT_ANSVARLIG_DELTAGERE", "FUNKTION"), date) !== undefined;
+            if (!ownership && !liable) continue;
+
+            const isCompany = participant.enhedstype === "VIRKSOMHED" && participant.forretningsnoegle !== null;
+            const name =
+                valueAt(participant.navne, date)?.navn ??
+                participant.navne?.[participant.navne.length - 1]?.navn ??
+                (isCompany ? String(participant.forretningsnoegle) : "Ukendt deltager");
+
+            owners.push({
+                cvr: isCompany ? participant.forretningsnoegle : null,
+                name,
+                type: isCompany ? "COMPANY" : participant.enhedstype === "PERSON" ? "PERSON" : "OTHER",
+                ownershipPercentage: bandOf(toDecimal(ownership?.vaerdi)),
+                votingRightsPercentage: bandOf(toDecimal(voting?.vaerdi)),
+                fullyLiable: liable,
+                participantRole: participantRoleOf(form, ownership !== undefined, liable),
+                inGroup: false,
+            });
+        }
+
+        return owners.sort((a, b) => (b.ownershipPercentage.interval.from ?? -1) - (a.ownershipPercentage.interval.from ?? -1));
+    }
+
     /**
      * Maps a registry document to the subsidiary it represents under `parentCvr`.
      *
@@ -361,6 +417,7 @@ export default abstract class CorporateGroupService {
             fullyLiable: isFullyLiable,
             participantRole: participantRoleOf(details.corporateForm.abbreviation, isOwner, isFullyLiable),
             retrievedAt: new Date().toISOString(),
+            owners: CorporateGroupService.ownersAt(virksomhed, effective),
             ...details,
         };
 
@@ -376,6 +433,7 @@ export default abstract class CorporateGroupService {
                     votingRightsPercentage: bandOf(toDecimal(valueAt(votingRights, date)?.vaerdi)),
                     fullyLiable: liable,
                     participantRole: participantRoleOf(form, owned !== undefined, liable),
+                    owners: CorporateGroupService.ownersAt(virksomhed, date),
                 };
             });
         }
@@ -524,11 +582,19 @@ export default abstract class CorporateGroupService {
         company: CorporateGroup,
         level: number = 0,
         parent?: { name: string; cvr: number },
+        seenEdges?: Set<string>,
     ): CompanyFlattened[] {
         let flattenedCompanies: CompanyFlattened[] = [];
 
         // Carry every Company field over; only the tree structure is replaced by level/parent.
         const { subsidiaries: _subsidiaries, ...companyFields } = company;
+
+        // A company owned by several group members is reached by several paths; its
+        // own subtree is the same every time, so each parent→child edge is listed once.
+        seenEdges ??= new Set<string>();
+        const edgeKey = `${parent?.cvr ?? "root"}>${company.cvr}`;
+        if (seenEdges.has(edgeKey)) return [];
+        seenEdges.add(edgeKey);
 
         if (!parent) {
             flattenedCompanies.push({
@@ -550,7 +616,7 @@ export default abstract class CorporateGroupService {
         if (company.subsidiaries) {
             company.subsidiaries.forEach((subsidiary) => {
                 flattenedCompanies = flattenedCompanies.concat(
-                    this.flattenCorporateGroup(subsidiary, level + 1, { name: company.name, cvr: company.cvr }),
+                    this.flattenCorporateGroup(subsidiary, level + 1, { name: company.name, cvr: company.cvr }, seenEdges),
                 );
             });
         }
@@ -594,6 +660,7 @@ export default abstract class CorporateGroupService {
             cvrNumber,
             new Set([cvrNumber]),
             lookup,
+            new Map(),
         );
 
         const corporateGroup: CorporateGroup = {
@@ -605,6 +672,7 @@ export default abstract class CorporateGroupService {
             fullyLiable: false,
             participantRole: null,
             retrievedAt: new Date().toISOString(),
+            owners: CorporateGroupService.ownersAt(parentCompany, rootAsOf),
             ...CorporateGroupService.extractCompanyDetails(parentCompany, rootAsOf),
             ...(lookup.history || lookup.window ? { ownershipHistory: [], membership: null } : {}),
             ...(lookup.window ? { events: [] } : {}),
@@ -617,11 +685,13 @@ export default abstract class CorporateGroupService {
                           votingRightsPercentage: bandOf(null),
                           fullyLiable: false,
                           participantRole: null,
+                          owners: CorporateGroupService.ownersAt(parentCompany, date),
                       })),
                   }
                 : {}),
             subsidiaries: subsidiaries,
         };
+        CorporateGroupService.markOwnersInGroup(corporateGroup);
         if (lookup.window) {
             corporateGroup.restructurings = corporateGroup.restructurings.filter(
                 (r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, lookup.window!),
@@ -638,6 +708,23 @@ export default abstract class CorporateGroupService {
         }
 
         return corporateGroup;
+    }
+
+    /** Flags every owner that is itself a company in this response. */
+    private static markOwnersInGroup(root: CorporateGroup): void {
+        const nodes: CorporateGroup[] = [];
+        const walk = (node: CorporateGroup): void => {
+            nodes.push(node);
+            (node.subsidiaries ?? []).forEach(walk);
+        };
+        walk(root);
+        const members = new Set(nodes.map((node) => node.cvr));
+        for (const node of nodes) {
+            for (const owner of node.owners) owner.inGroup = owner.cvr !== null && members.has(owner.cvr);
+            for (const snapshot of node.snapshots ?? []) {
+                for (const owner of snapshot.owners) owner.inGroup = owner.cvr !== null && members.has(owner.cvr);
+            }
+        }
     }
 
     /**
@@ -795,11 +882,18 @@ export default abstract class CorporateGroupService {
         cvrNumber: number,
         visited: Set<number> = new Set([cvrNumber]),
         options: GroupLookupOptions = NOW,
+        // One register lookup per company per request, however many paths lead to it.
+        lookups: Map<number, Promise<Company[]>> = new Map(),
     ): Promise<{
         subsidiaries: CorporateGroup[] | null;
         selfOwnershipPercentage: { from: number | null; to: number | null } | null;
     }> {
-        const subsidiaries = await this.getCompanySubsidiariesFromDanishBusinessRegistrationAPI(cvrNumber, options);
+        let lookup = lookups.get(cvrNumber);
+        if (!lookup) {
+            lookup = this.getCompanySubsidiariesFromDanishBusinessRegistrationAPI(cvrNumber, options);
+            lookups.set(cvrNumber, lookup);
+        }
+        const subsidiaries = await lookup;
 
         if (!subsidiaries || subsidiaries.length === 0)
             return {
@@ -829,7 +923,7 @@ export default abstract class CorporateGroupService {
             const nestedVisited = new Set(visited);
             nestedVisited.add(subsidiary.cvr);
             const { subsidiaries: nestedSubsidiaries, selfOwnershipPercentage: nestedSelfOwnershipPercentage } =
-                await CorporateGroupService.getSubsidiaries(subsidiary.cvr, nestedVisited, options);
+                await CorporateGroupService.getSubsidiaries(subsidiary.cvr, nestedVisited, options, lookups);
             return {
                 ...subsidiary,
                 selfOwnershipPercentage: nestedSelfOwnershipPercentage,

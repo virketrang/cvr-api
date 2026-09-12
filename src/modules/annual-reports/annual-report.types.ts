@@ -151,6 +151,14 @@ export interface GroupEntityFromNotes {
     scope: "consolidated" | "solo" | null;
     /** What the note calls the entity: a subsidiary (datter-/tilknyttet virksomhed) or an associate (associeret/kapitalinteresse); null when the note does not say. */
     relation: "subsidiary" | "associate" | null;
+    /** Carrying amount of the holding as stated in the note, in whole DKK (t.kr. scaled); null when not stated or not readable. */
+    bookValue?: number | null;
+    /** The entity's equity as stated in the note (whole DKK); null when not stated. */
+    equity?: number | null;
+    /** The entity's profit/loss for the year as stated in the note (whole DKK); null when not stated. */
+    profitLoss?: number | null;
+    /** Currency of the amounts above; "DKK" when stated in kroner, null when no amounts were read. */
+    amountsCurrency?: "DKK" | null;
     /**
      * The entity's DIRECT parent, set only when it is certain: a solo-scope note —
      * or any note in a filing without consolidated statements — describes the

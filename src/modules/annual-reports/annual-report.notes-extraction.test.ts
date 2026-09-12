@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { parseColumnList, parseInvestmentProse, parseTables } from "./annual-report.notes-extraction.js";
+import { parseColumnList, parseInvestmentProse, parseTables, splitGluedAmounts } from "./annual-report.notes-extraction.js";
 
 /** Real note texts (textContent of the XBRL note element) from filings sampled in September 2026. */
 const pick = (entities: ReturnType<typeof parseColumnList>) =>
@@ -128,5 +128,47 @@ describe("parseTables — bundled name cells", () => {
             ["Høvegaard ApS", "Ringsted", null, 100],
             ["BIKEMEDIA ApS", null, "36026626", 100],
         ]);
+    });
+});
+
+describe("amounts in ownership lists", () => {
+    it("splits glued Danish amounts only when the split is unambiguous", () => {
+        assert.deepEqual(splitGluedAmounts("87.34539.891", 2), [87345, 39891]);
+        assert.deepEqual(splitGluedAmounts("4.142.3312.063.371", 2), [4142331, 2063371]);
+        assert.deepEqual(splitGluedAmounts("--", 1), [null]);
+        assert.deepEqual(splitGluedAmounts("-1.200", 1), [-1200]);
+        assert.equal(splitGluedAmounts("500250", 2), null); // two undotted numbers glued — ambiguous
+        assert.equal(splitGluedAmounts("12345", 2), null);
+        assert.equal(splitGluedAmounts("87.345", 2), null); // one number, never 8 and 7.345
+    });
+
+    it("reads equity and profit/loss from a t.kr. list with amounts before the share", () => {
+        const text =
+            "Kapitalandele i dattervirksomheder (tkr.) Navn og hjemstedEgenkapitalÅrets resultatEjerandel Nicon Industries A/S, Esbjerg 87.34539.891100 % EOWS ApS, Sæby 12.4501.696100 %";
+        const rows = parseColumnList(text, "DisclosureOfInvestments", null).map((e) => [e.name, e.equity, e.profitLoss, e.bookValue, e.amountsCurrency]);
+        assert.deepEqual(rows, [
+            ["Nicon Industries A/S", 87345000, 39891000, null, "DKK"],
+            ["EOWS ApS", 12450000, 1696000, null, "DKK"],
+        ]);
+    });
+
+    it("reads amounts after the share in whole kroner and a book-value column", () => {
+        const text = "NavnHjemstedEjerandelRegnskabsmæssig værdiÅrets resultatThouber Tax-Free Cars A/SOdense100%4.142.3312.063.371";
+        const rows = parseColumnList(text, "DisclosureOfInvestments", null).map((e) => [e.name, e.bookValue, e.profitLoss, e.equity]);
+        assert.deepEqual(rows, [["Thouber Tax-Free Cars A/S", 4142331, 2063371, null]]);
+    });
+
+    it("leaves amounts null when the glued run cannot be split safely", () => {
+        const text = "Navn Hjemsted Ejerandel Egenkapital Alpha ApS Aarhus 100% 500250";
+        const rows = parseColumnList(text, "DisclosureOfInvestments", null).map((e) => [e.name, e.equity, e.amountsCurrency]);
+        assert.deepEqual(rows, [["Alpha ApS", null, null]]);
+    });
+
+    it("reads amount cells from tables and scales t.kr.", () => {
+        const html =
+            "<p>Beløb i t.kr.</p><table><tr><th>Navn</th><th>Hjemsted</th><th>Ejerandel</th><th>Regnskabsmæssig værdi</th></tr>" +
+            "<tr><td>Beta ApS</td><td>Odense</td><td>60 %</td><td>1.250</td></tr></table>";
+        const rows = parseTables(html, "DisclosureOfInvestments", null).map((e) => [e.name, e.ownershipPercentage, e.bookValue, e.amountsCurrency]);
+        assert.deepEqual(rows, [["Beta ApS", 60, 1250000, "DKK"]]);
     });
 });

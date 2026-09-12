@@ -321,6 +321,9 @@ type ColumnMap = {
     legalForm: number | null;
     ownership: number | null;
     voting: number | null;
+    bookValue: number | null;
+    equity: number | null;
+    profitLoss: number | null;
 };
 
 const HEADER_PATTERNS = {
@@ -333,13 +336,16 @@ const HEADER_PATTERNS = {
 
 /** Identifies which column holds what, from a candidate header row's cell texts. */
 function mapColumns(cells: string[]): ColumnMap | null {
-    const map: ColumnMap = { name: -1, place: null, legalForm: null, ownership: null, voting: null };
+    const map: ColumnMap = { name: -1, place: null, legalForm: null, ownership: null, voting: null, bookValue: null, equity: null, profitLoss: null };
 
     cells.forEach((cell, index) => {
         const text = cleanText(cell);
         if (!text) return;
         if (map.name === -1 && HEADER_PATTERNS.name.test(text)) map.name = index;
         else if (map.voting === null && HEADER_PATTERNS.voting.test(text)) map.voting = index;
+        else if (map.bookValue === null && /regnskabsm|bogført|carrying|book\s*value|indre\s+værdi/i.test(text)) map.bookValue = index;
+        else if (map.equity === null && /egenkapital|equity/i.test(text)) map.equity = index;
+        else if (map.profitLoss === null && /resultat|result|profit/i.test(text)) map.profitLoss = index;
         else if (map.ownership === null && HEADER_PATTERNS.ownership.test(text)) map.ownership = index;
         else if (map.place === null && HEADER_PATTERNS.place.test(text)) map.place = index;
         else if (map.legalForm === null && HEADER_PATTERNS.legalForm.test(text)) map.legalForm = index;
@@ -361,10 +367,30 @@ function looksLikeHeader(text: string): boolean {
     );
 }
 
+/** The amount cells of a table row, scaled to whole DKK; null fields when absent. */
+function tableAmounts(
+    columns: ColumnMap,
+    cells: string[],
+    scale: number,
+): Pick<GroupEntityFromNotes, "bookValue" | "equity" | "profitLoss" | "amountsCurrency"> {
+    const read = (index: number | null): number | null => {
+        if (index === null) return null;
+        const split = splitGluedAmounts(cells[index] ?? "", 1);
+        return split && split[0] !== null ? split[0] * scale : null;
+    };
+    const bookValue = read(columns.bookValue);
+    const equity = read(columns.equity);
+    const profitLoss = read(columns.profitLoss);
+    const any = bookValue !== null || equity !== null || profitLoss !== null;
+    return { bookValue, equity, profitLoss, amountsCurrency: any ? "DKK" : null };
+}
+
 /** Extracts group entities from XHTML tables in a note fragment (tier 2). */
 export function parseTables(html: string, sourceConcept: string, scope: GroupEntityFromNotes["scope"]): GroupEntityFromNotes[] {
     const entities: GroupEntityFromNotes[] = [];
     const $ = cheerio.load(html);
+
+    const scale = amountScaleOf(cleanText($("body").text()).slice(0, 400));
 
     $("table").each((_, table) => {
         const rows = $(table).find("tr").toArray();
@@ -423,6 +449,7 @@ export function parseTables(html: string, sourceConcept: string, scope: GroupEnt
                 scope,
                 parent: null,
                 relation: null,
+                ...tableAmounts(columns, cells, scale),
             });
         }
     });
@@ -432,9 +459,64 @@ export function parseTables(html: string, sourceConcept: string, scope: GroupEnt
 
 type ColumnKey = "name" | "place" | "form" | "amount" | "pct" | "voting";
 
+/** What an amount column holds, by header label. */
+type AmountKind = "bookValue" | "equity" | "profitLoss" | "other";
+
+function amountKindOf(label: string): AmountKind {
+    if (/regnskabsm|bogført|carrying|book\s*value|indre\s+værdi/i.test(label)) return "bookValue";
+    if (/egenkapital|equity/i.test(label)) return "equity";
+    if (/resultat|result|profit/i.test(label)) return "profitLoss";
+    return "other";
+}
+
+/** Scale factor implied by the unit tokens around a list header ("t.kr.", "tkr", "DKK 1.000"). */
+function amountScaleOf(headerText: string): number {
+    return /\bt\.?\s*(?:kr|dkk)|\btkr\b|1\.000\s*(?:kr|dkk)|(?:kr|dkk)\s*1\.000/i.test(headerText) ? 1000 : 1;
+}
+
+/**
+ * Splits a run of glued Danish amounts ("87.34539.891" → [87345, 39891]) into
+ * exactly `count` numbers by longest-match: at every position the longest
+ * well-formed amount (thousand groups of three, optional decimals, "-"/"--"
+ * for none) is taken, so "87.345" is one number, never 8 and 7.345. Returns
+ * null unless exactly `count` numbers consume the whole run, and rejects two
+ * adjacent undotted numbers ("500250"), which cannot be split reliably.
+ */
+export function splitGluedAmounts(run: string, count: number): Array<number | null> | null {
+    if (count <= 0) return null;
+    const token = /^(?:(?:-\s?)?(?:\d{1,3}(?:\.\d{3})+|\d{1,3})(?:,\d{1,2})?|-{1,2}(?!\d))/;
+    let rest = run.replace(/\s+/g, "").trim();
+    const values: Array<number | null> = [];
+    let previousPlain = false;
+
+    while (rest.length > 0) {
+        rest = rest.replace(/^[,;]+/, "");
+        if (!rest) break;
+        // Longest well-formed prefix.
+        let best = "";
+        for (let end = Math.min(rest.length, 24); end >= 1; end--) {
+            const candidate = rest.slice(0, end);
+            const m = token.exec(candidate);
+            if (m && m[0] === candidate) {
+                best = candidate;
+                break;
+            }
+        }
+        if (!best) return null;
+        const plain = /^-?\d{1,3}(?:,\d{1,2})?$/.test(best);
+        if (plain && previousPlain) return null;
+        previousPlain = plain;
+        values.push(/^-{1,2}$/.test(best) ? null : Number(best.replace(/\./g, "").replace(",", ".")));
+        rest = rest.slice(best.length);
+        if (values.length > count) return null;
+    }
+
+    return values.length === count ? values : null;
+}
+
 const COLUMN_LABELS: Array<[ColumnKey | "skip", RegExp]> = [
     ["name", /^navn(?:\s*,\s*retsform)?(?:\s+og\s+hjemsted)?\s*:?/i],
-    ["amount", /^(?:selskabskapital|aktiekapital|anpartskapital|egenkapital|equity|årets\s+resultat|share\s+capital|profit(?:\/loss)?)\s*(?:\(?(?:t\.?\s*)?(?:dkk|kr\.?|eur|tkr\.?)\)?)?\s*:?/i],
+    ["amount", /^(?:regnskabsmæssig\s+værdi|bogført\s+værdi|indre\s+værdi|kostpris|carrying\s+amount|book\s+value|selskabskapital|aktiekapital|anpartskapital|egenkapital|equity|årets\s+resultat|share\s+capital|profit(?:\/loss)?)\s*(?:\(?(?:t\.?\s*)?(?:dkk|kr\.?|eur|tkr\.?)\)?)?\s*:?/i],
     ["name", /^(?:selskab(?:snavn)?|virksomhed(?:snavn)?|company(?:\s+name)?|name)(?![a-zæøå])\s*:?/i],
     ["place", /^(?:hjemsted|registered\s+(?:office|in)|domicile|country|land)\s*:?/i],
     ["form", /^(?:retsform|selskabsform|legal\s+form|corporate\s+form)\s*:?/i],
@@ -481,6 +563,10 @@ function trailingLegalForm(text: string): string | null {
 
 interface ListHeader {
     columns: ColumnKey[];
+    /** For every "amount" column, in order, what it holds. */
+    amountKinds: AmountKind[];
+    /** Multiplier for amounts (1000 when the header says t.kr.). */
+    scale: number;
     /** Where the header starts and where its rows start. */
     start: number;
     rowsStart: number;
@@ -506,6 +592,7 @@ export function readListHeaders(text: string): ListHeader[] {
         if (!pctLabel.test(text.slice(start, start + 160))) continue;
 
         const columns: ColumnKey[] = [];
+        const amountKinds: AmountKind[] = [];
         let pos = start;
         while (pos < text.length) {
             const rest = text.slice(pos);
@@ -525,6 +612,7 @@ export function readListHeaders(text: string): ListHeader[] {
                     if (/hjemsted/i.test(m[0])) columns.push("place");
                 } else if (key !== "skip") {
                     columns.push(key);
+                    if (key === "amount") amountKinds.push(amountKindOf(m[0]));
                 }
                 pos += m[0].length;
                 advanced = true;
@@ -544,7 +632,7 @@ export function readListHeaders(text: string): ListHeader[] {
             : /datter|tilknyttede|subsidiar/i.test(before)
               ? "subsidiary"
               : null;
-        headers.push({ columns, start, rowsStart: pos, relation });
+        headers.push({ columns, amountKinds, start, rowsStart: pos, relation, scale: amountScaleOf(text.slice(Math.max(0, start - 80), pos)) });
         headerStart.lastIndex = pos;
     }
 
@@ -563,14 +651,22 @@ export function readListHeader(text: string): { columns: ColumnKey[]; rowsStart:
  * suffix that is a valid share. Returns null when the run is not clearly a share.
  */
 export function shareFromGluedDigits(run: string): number | null {
+    return splitGluedShare(run).share;
+}
+
+/**
+ * Separates a share glued to preceding amounts into the amount prefix and the
+ * share: "87.34539.891100" → { prefix: "87.34539.891", share: 100 }.
+ */
+export function splitGluedShare(run: string): { prefix: string; share: number | null } {
     const clean = run.replace(/\s/g, "");
-    if (/^\d{1,3}([.,]\d{1,2})?$/.test(clean)) return parsePercentage(clean);
-    if (clean.endsWith("100")) return 100;
+    if (/^\d{1,3}([.,]\d{1,2})?$/.test(clean)) return { prefix: "", share: parsePercentage(clean) };
+    if (clean.endsWith("100")) return { prefix: clean.slice(0, -3), share: 100 };
     const decimal = /(\d{1,2}[.,]\d{1,2})$/.exec(clean);
-    if (decimal) return parsePercentage(decimal[1]);
+    if (decimal) return { prefix: clean.slice(0, -decimal[1].length), share: parsePercentage(decimal[1]) };
     const twoDigits = /(\d{2})$/.exec(clean);
-    if (twoDigits && twoDigits[1] !== "00") return parsePercentage(twoDigits[1]);
-    return null;
+    if (twoDigits && twoDigits[1] !== "00") return { prefix: clean.slice(0, -2), share: parsePercentage(twoDigits[1]) };
+    return { prefix: clean, share: null };
 }
 
 /**
@@ -600,6 +696,48 @@ export function parseColumnList(text: string, sourceConcept: string, scope: Grou
 
     // The note is rejected when fewer than half of its rows parse.
     return rows > 0 && entities.length * 2 >= rows ? entities : [];
+}
+
+/**
+ * Reads the amount columns of a row: the run before the share (incl. the part
+ * glued to the share itself, "87.34539.891" from "87.34539.891100") holds the
+ * columns listed before "Ejerandel" in the header, the run after it the ones
+ * listed after.
+ */
+function readAmounts(
+    header: ListHeader,
+    runBefore: string,
+    runAfter: string,
+): Pick<GroupEntityFromNotes, "bookValue" | "equity" | "profitLoss" | "amountsCurrency"> {
+    const none = { bookValue: null, equity: null, profitLoss: null, amountsCurrency: null } as const;
+    const pctIndex = header.columns.indexOf("pct");
+    const kindsBefore = header.columns.slice(0, pctIndex).filter((c) => c === "amount").map((_, i) => header.amountKinds[i]);
+    const kindsAfter = header.columns
+        .slice(pctIndex + 1)
+        .filter((c) => c === "amount")
+        .map((_, i) => header.amountKinds[kindsBefore.length + i]);
+
+    const values = new Map<AmountKind, number | null>();
+    let read = false;
+    const take = (kinds: AmountKind[], run: string): void => {
+        if (kinds.length === 0 || !run.trim()) return;
+        const split = splitGluedAmounts(run, kinds.length);
+        if (!split) return;
+        kinds.forEach((kind, i) => {
+            if (kind !== "other" && !values.has(kind)) values.set(kind, split[i] === null ? null : split[i]! * header.scale);
+        });
+        read = true;
+    };
+    take(kindsBefore, runBefore);
+    take(kindsAfter, runAfter);
+    if (!read) return none;
+
+    return {
+        bookValue: values.get("bookValue") ?? null,
+        equity: values.get("equity") ?? null,
+        profitLoss: values.get("profitLoss") ?? null,
+        amountsCurrency: "DKK",
+    };
 }
 
 function parseListSegment(
@@ -661,7 +799,8 @@ function parseListSegment(
         rows++;
 
         const rawShare = match[1];
-        const share = shareFromGluedDigits(rawShare);
+        const glued = splitGluedShare(rawShare);
+        const share = glued.share;
         // A share glued to an amount column is only trusted when it resolves cleanly.
         const shareTrusted = /^\d{1,3}([.,]\d{1,2})?$/.test(rawShare.replace(/\s/g, "")) || (amountsBeforePct && share !== null);
 
@@ -672,7 +811,19 @@ function parseListSegment(
             if (legalForm) rest = rest.slice(0, -legalForm.length).trim();
         }
         // Amount columns between the name/place and the share (equity, result…).
-        if (amountsBeforePct) rest = rest.replace(/[\s\d.,\-–]+$/, "").trim();
+        let amountRunBefore = "";
+        if (amountsBeforePct) {
+            const run = /[\s\d.,\-–]+$/.exec(rest);
+            if (run) {
+                amountRunBefore = run[0];
+                rest = rest.slice(0, run.index).trim();
+            }
+        }
+        let amountRunAfter = "";
+        if (amountsAfterPct) {
+            const run = /^[\s\d.,\-–]+/.exec(body.slice(cursor));
+            if (run) amountRunAfter = run[0];
+        }
 
         let place: string | null = null;
         if (hasPlace) {
@@ -733,6 +884,7 @@ function parseListSegment(
             scope,
             parent: null,
             relation,
+            ...readAmounts(header, amountRunBefore + glued.prefix, amountRunAfter),
         });
     }
 

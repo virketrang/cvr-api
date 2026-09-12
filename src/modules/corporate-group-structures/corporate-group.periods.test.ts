@@ -356,3 +356,62 @@ describe("restructuring roles and dissolution reasons", () => {
         assert.equal(dissolutionReasonOf(null), null);
     });
 });
+
+describe("owners", () => {
+    const parentCvr = 78809019;
+    const ownerRelation = (deltager: object, share: string, from: string, to: string | null) => ({
+        deltager,
+        organisationer: [
+            {
+                hovedtype: "REGISTER",
+                organisationsNavn: [{ navn: "EJERREGISTER" }],
+                medlemsData: [
+                    {
+                        attributter: [
+                            { type: "EJERANDEL_PROCENT", vaerdier: [dated(from, to, share)] },
+                            { type: "EJERANDEL_STEMMERET_PROCENT", vaerdier: [dated(from, to, share)] },
+                        ],
+                    },
+                ],
+            },
+        ],
+    });
+    /** A company owned 90 pct. by the parent, 10 pct. by another group company and 5 pct. by a person from 2023. */
+    const company = {
+        cvrNummer: 62497718,
+        navne: [{ navn: "NOWACO A/S", periode: { gyldigFra: "1990-01-01", gyldigTil: null }, sidstOpdateret: null }],
+        binavne: [],
+        livsforloeb: [{ periode: { gyldigFra: "1990-01-01", gyldigTil: null }, sidstOpdateret: "" }],
+        virksomhedsform: [{ virksomhedsformkode: 60, kortBeskrivelse: "A/S", langBeskrivelse: "Aktieselskab", periode: { gyldigFra: "1990-01-01", gyldigTil: null } }],
+        virksomhedsstatus: [],
+        hovedbranche: [],
+        beliggenhedsadresse: [],
+        attributter: [],
+        fusioner: [],
+        spaltninger: [],
+        virksomhedMetadata: { nyesteNavn: { navn: "NOWACO A/S" } },
+        deltagerRelation: [
+            ownerRelation({ enhedstype: "VIRKSOMHED", forretningsnoegle: parentCvr, navne: [{ navn: "TIKA HOLDING A/S", periode: { gyldigFra: "1990-01-01", gyldigTil: null } }] }, "0.9", "2014-07-03", null),
+            ownerRelation({ enhedstype: "VIRKSOMHED", forretningsnoegle: 34610266, navne: [{ navn: "NOWACO INVEST 2012 ApS", periode: { gyldigFra: "2012-01-01", gyldigTil: null } }] }, "0.1", "2012-07-04", null),
+            ownerRelation({ enhedstype: "PERSON", forretningsnoegle: null, navne: [{ navn: "Anders Andersen", periode: { gyldigFra: "2023-01-01", gyldigTil: null } }] }, "0.05", "2023-01-01", null),
+        ],
+    } as unknown as Virksomhed;
+
+    it("lists every registered owner on the effective date, companies and persons alike", () => {
+        const c = CorporateGroupService.mapSubsidiary(company, parentCvr, { asOf: "2022-12-31", history: false, window: null, includeFullyLiable: false, dates: null });
+        assert.deepEqual(c?.owners.map((o) => [o.cvr, o.type, o.ownershipPercentage.label, o.inGroup]), [
+            [parentCvr, "COMPANY", "90–99,99 %", false],
+            [34610266, "COMPANY", "10–14,99 %", false],
+        ]);
+    });
+
+    it("gives owners per snapshot date", () => {
+        const c = CorporateGroupService.mapSubsidiary(company, parentCvr, { asOf: null, history: false, window: { from: "2022-12-31", to: "2024-12-31" }, includeFullyLiable: false, dates: ["2022-12-31", "2024-12-31"] });
+        assert.equal(c?.snapshots?.[0].owners.length, 2);
+        assert.deepEqual(c?.snapshots?.[1].owners.map((o) => [o.name, o.type, o.ownershipPercentage.label]), [
+            ["TIKA HOLDING A/S", "COMPANY", "90–99,99 %"],
+            ["NOWACO INVEST 2012 ApS", "COMPANY", "10–14,99 %"],
+            ["Anders Andersen", "PERSON", "5–9,99 %"],
+        ]);
+    });
+});

@@ -409,6 +409,13 @@ export const groupEntityFromNotesSchema = z.object({
         description: "Om noten står i koncern- eller moderselskabskontekst, når det er opmærket",
         example: "consolidated",
     }),
+    bookValue: z.number().nullable().optional().openapi({
+        description: "Bogført/regnskabsmæssig værdi af kapitalandelen ifølge noten, i hele DKK (t.kr. er omregnet); null når noten ikke angiver den",
+        example: 1234000,
+    }),
+    equity: z.number().nullable().optional().openapi({ description: "Virksomhedens egenkapital ifølge noten, hele DKK", example: 87345000 }),
+    profitLoss: z.number().nullable().optional().openapi({ description: "Virksomhedens årsresultat ifølge noten, hele DKK", example: 39891000 }),
+    amountsCurrency: z.enum(["DKK"]).nullable().optional().openapi({ description: "Valuta for beløbene ovenfor; null når ingen beløb er læst", example: "DKK" }),
     relation: z.enum(["subsidiary", "associate"]).nullable().openapi({
         description:
             "Hvad noten kalder virksomheden: subsidiary (datter-/tilknyttet virksomhed) eller associate " +
