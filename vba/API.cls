@@ -96,6 +96,41 @@ ErrorHandler:
   If Error.handle("API.getRateOfReturnOnCapitalAtDate()", Err.description, Err.number, Erl) Then Resume CleanExit
 End Function
 
+' Hurtigt opslag til validering af et indtastet CVR-nummer (kaldes ved blur).
+' Returnerer selskabets navn, eller en tom streng når nummeret ikke findes i
+' registret. Bruger GET /api/companies/{cvr}, som kun henter navn og status
+' og cacher svaret på serveren, så kaldet typisk tager under 100 ms.
+' Et opløst selskab findes stadig; se `active` i svaret, hvis det skal skelnes.
+Function getCompanyName(ByVal cvr As String) As String
+    On Error GoTo ErrorHandler
+    Stack.Push "API.getCompanyName()"
+
+    Dim response As Variant
+
+    getCompanyName = vbNullString
+
+    Set response = HTTPClient.Fetch("/api/companies/" & cvr)
+
+    If response Is Nothing Then
+        ' 404 (ukendt CVR-nummer) eller netværksfejl: HTTPClient har vist beskeden.
+        GoTo CleanExit
+    End If
+
+    If Not IsObject(response) Or Not response.Exists("name") Then
+        Toast.Show "Fejl: API-svaret er ikke det forventede objekt {cvr, name, status, active}.", "bottom-right", "error", 8
+        GoTo CleanExit
+    End If
+
+    getCompanyName = CStr(response("name"))
+
+CleanExit:
+  Stack.Pop
+  Exit Function
+
+ErrorHandler:
+  If Error.handle("API.getCompanyName()", Err.description, Err.number, Erl) Then Resume CleanExit
+End Function
+
 Function getAPIVersion() As String
     On Error GoTo ErrorHandler
     Stack.Push "API.getAPIVersion()"

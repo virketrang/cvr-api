@@ -14,6 +14,7 @@ import { ErrorCode, toAppError, type ApiErrorBody } from "./utils/api-error.js";
 import { rateLimit } from "./utils/rate-limit.js";
 
 import * as corporateGroups from "./modules/corporate-group-structures/corporate-group.controller.js";
+import * as companies from "./modules/companies/company.controller.js";
 import * as annualReports from "./modules/annual-reports/annual-report.controller.js";
 import * as version from "./modules/version/version.controller.js";
 import * as rateOfReturnOnCapital from "./modules/rate-of-return-on-capital/rate-of-return-on-capital.controller.js";
@@ -63,6 +64,7 @@ app.use(
 
 app.use("/api/*", rateLimit());
 
+app.openapi(companies.route, companies.router);
 app.openapi(corporateGroups.route, corporateGroups.router);
 app.openapi(corporateGroups.flattenedRoute, corporateGroups.flattenedRouter);
 app.openapi(annualReports.route, annualReports.router);

@@ -31,7 +31,10 @@ kvalifikationsregler, noter) ligger nu på serveren.
      `getRateOfReturnOnCapitalAtDate(dato)` mod
      `GET /api/rate-of-return-on-capital/{dato}`, som giver den senest
      offentliggjorte kapitalafkastsats på datoen — brug den i stedet for
-     `getRateOfReturnOnCapital()`, når der er indtastet en overdragelsesdato)
+     `getRateOfReturnOnCapital()`, når der er indtastet en overdragelsesdato;
+     ny `getCompanyName(cvr)` mod `GET /api/companies/{cvr}` — hurtigt
+     navneopslag til validering af et indtastet CVR-nummer ved blur, tom streng
+     når nummeret ikke findes)
    - `Valuation.cls` (`AutoComplete`/`Populate*` erstattet af `Render`; alle
      ark-/konsoliderings-/eksport-rutiner er uændrede)
    - `PassiveAssetTest.cls` (`AutoComplete`/`Insert*` erstattet af `Render`;
