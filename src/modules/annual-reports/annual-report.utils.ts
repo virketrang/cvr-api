@@ -417,9 +417,10 @@ export default class XBRLDocument {
             return null;
         }
 
-        // Statement facts: no non-scope dimensions ever match, so the first is the total.
+        // Statement facts: no non-scope dimensions ever match, so every match is the
+        // total; when it is tagged more than once, take the most precise one.
         if (!allowDimensional) {
-            return this.toAccount(financialResults[0]);
+            return this.toAccount(this.mostPreciseRecord(financialResults));
         }
 
         // Notes: a note figure (e.g. AmortisationOfIntangibleAssets) may be tagged
@@ -434,7 +435,7 @@ export default class XBRLDocument {
 
         const entityLevel = financialResults.filter((record) => nonScopeDimensions(record).length === 0);
         if (entityLevel.length > 0) {
-            return this.toAccount(entityLevel[0]);
+            return this.toAccount(this.mostPreciseRecord(entityLevel));
         }
 
         return this.sumDimensionalFacts(financialResults, nonScopeDimensions);
@@ -554,6 +555,52 @@ export default class XBRLDocument {
     }
 
     /**
+     * The record of a general-data (gsd) fact that describes the report itself.
+     *
+     * Since the 2019 taxonomy the reporting-period dates can appear twice: once for
+     * the accounting period (no dimension, or the default AllReportingPeriodsMember)
+     * and once for the period registered in CVR, tagged with
+     * TypeOfReportingPeriodDimension = RegisteredReportingPeriodDeviating…Member,
+     * when the financial year floats (mergers, demergers, changed year end). Only the
+     * accounting period may drive the contexts (technical rules TR05/TR06), so the
+     * registered-period fact is never used. Among the rest a context without any
+     * dimension wins, then one whose only dimension is the solo/koncern marker (the
+     * IFRS-era ÅRL stub tags its general data with ConsolidatedMember).
+     */
+    private primaryGeneralDataRecord(records: XBRLRecord): NonNullable<XBRLRecord>[number] | null {
+        if (!records) return null;
+
+        const isRegisteredPeriod = (record: NonNullable<XBRLRecord>[number]) =>
+            record.context?.dimensions.some(
+                (d) => d.dimension === "TypeOfReportingPeriodDimension" && d.member !== "AllReportingPeriodsMember",
+            ) ?? false;
+
+        const candidates = records.filter((record) => record.value && !isRegisteredPeriod(record));
+
+        return (
+            candidates.find((record) => (record.context?.dimensions.length ?? 0) === 0) ??
+            candidates.find((record) =>
+                record.context!.dimensions.every((d) => d.dimension === "ConsolidatedSoloDimension"),
+            ) ??
+            candidates[0] ??
+            null
+        );
+    }
+
+    /**
+     * Of several facts for the same account and date, the one to report: a numeric
+     * value with the highest `decimals`. Filings may legitimately carry the same
+     * figure twice with different precision (a rounded presentation in the primary
+     * statement and the exact amount in a note), and the exact one is wanted.
+     */
+    private mostPreciseRecord(records: NonNullable<XBRLRecord>): NonNullable<XBRLRecord>[number] {
+        const numeric = records.filter((record) => record.value && !isNaN(parseInt(record.value, 10)));
+        if (numeric.length === 0) return records[0];
+
+        return numeric.reduce((best, record) => ((record.decimals ?? -Infinity) > (best.decimals ?? -Infinity) ? record : best));
+    }
+
+    /**
      * The end date of the reporting period preceding this filing's own — the
      * period its comparative figures cover. Declared gsd facts are preferred
      * ("PredingReportingPeriodEndDate" is the taxonomy's official spelling; the
@@ -567,7 +614,7 @@ export default class XBRLDocument {
                 namespace: "http://xbrl.dcca.dk/gsd",
                 label: "Foregående regnskabsperiodes slutdato",
             });
-            const value = records?.[0]?.value;
+            const value = this.primaryGeneralDataRecord(records)?.value;
             if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
         }
 
@@ -640,12 +687,10 @@ export default class XBRLDocument {
             }
         }
 
-        if (
-            !reportingPeriodXBRLRecords.reportingPeriodStartDate ||
-            !reportingPeriodXBRLRecords.reportingPeriodEndDate ||
-            !reportingPeriodXBRLRecords.reportingPeriodStartDate[0]?.value ||
-            !reportingPeriodXBRLRecords.reportingPeriodEndDate[0]?.value
-        ) {
+        const startDateRecord = this.primaryGeneralDataRecord(reportingPeriodXBRLRecords.reportingPeriodStartDate);
+        const endDateRecord = this.primaryGeneralDataRecord(reportingPeriodXBRLRecords.reportingPeriodEndDate);
+
+        if (!startDateRecord?.value || !endDateRecord?.value) {
             throw new AppError(
                 ErrorCode.MISSING_PERIOD,
                 "Årsrapporten mangler en regnskabsperiode (start-/slutdato) og kunne ikke placeres.",
@@ -653,8 +698,8 @@ export default class XBRLDocument {
         }
 
         const reportingPeriod = {
-            reportingPeriodStartDate: reportingPeriodXBRLRecords.reportingPeriodStartDate[0].value,
-            reportingPeriodEndDate: reportingPeriodXBRLRecords.reportingPeriodEndDate[0].value,
+            reportingPeriodStartDate: startDateRecord.value,
+            reportingPeriodEndDate: endDateRecord.value,
         };
 
         // Build each statement's accounts, repairing the "decimals as scale" malformation

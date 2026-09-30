@@ -364,6 +364,8 @@ export interface Notes<T> {
     amortisationOfIntangibleAssets: T;
     impairmentLossesOfIntangibleAssets: T;
     accumulatedImpairmentLossesAndAmortisationOfIntangibleAssets: T;
+    /** Unit "pure": the number of employees, not an amount. */
+    averageNumberOfEmployees: T;
 }
 
 export interface InformationOnRelatedEntities<T> {

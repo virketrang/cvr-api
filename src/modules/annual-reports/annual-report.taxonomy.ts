@@ -99,6 +99,11 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 label: "Akkumulerede nedskrivninger og afskrivninger af immaterielle anlægsaktiver",
                 balance: "credit",
             },
+            averageNumberOfEmployees: {
+                name: "AverageNumberOfEmployees",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Gennemsnitligt antal ansatte",
+            },
         },
         informationOnRelatedEntities: {
             identificationNumberCvrOfRelatedEntity: {
