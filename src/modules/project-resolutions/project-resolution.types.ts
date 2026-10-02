@@ -109,7 +109,7 @@ export interface ResolvedNote {
 }
 
 export interface ProjectWarning {
-    code: "BALANCE_INCOMPLETE" | "REPORTS_FAILED" | "REPORT_SKIPPED";
+    code: "BALANCE_INCOMPLETE" | "REPORTS_FAILED" | "REPORT_SKIPPED" | "SOLO_FIGURES_MISSING";
     cvr: string | null;
     companyName: string | null;
     reportingPeriodEndDate: string | null;

@@ -578,10 +578,21 @@ export default class XBRLDocument {
         return this.sumDimensionalFacts(financialResults, nonScopeDimensions);
     }
 
-    /** Turns one XBRL record into an account, parsing the integer value (null if non-numeric). */
+    /**
+     * The numeric value of a fact as a whole number, or null when it is not a
+     * number. Amounts are whole kroner/euro in practice; the rare fact with
+     * decimals (øre, or a share like 0.6) is rounded rather than truncated.
+     */
+    private static parseAmount(value: string | null): number | null {
+        if (!value) return null;
+        const parsed = Number(value.trim());
+        return Number.isFinite(parsed) ? Math.round(parsed) : null;
+    }
+
+    /** Turns one XBRL record into an account (value null if non-numeric). */
     private toAccount(record: NonNullable<XBRLRecord>[number]) {
         return {
-            value: !record.value || isNaN(parseInt(record.value, 10)) ? null : parseInt(record.value, 10),
+            value: XBRLDocument.parseAmount(record.value),
             unit: record.unit,
             label: record.label,
             decimals: record.decimals,
@@ -616,8 +627,8 @@ export default class XBRLDocument {
         let sawNumber = false;
         for (const record of byMember.values()) {
             if (record.unit !== unit) continue;
-            const parsed = record.value ? parseInt(record.value, 10) : NaN;
-            if (!isNaN(parsed)) {
+            const parsed = XBRLDocument.parseAmount(record.value);
+            if (parsed !== null) {
                 total += parsed;
                 sawNumber = true;
             }
@@ -731,7 +742,7 @@ export default class XBRLDocument {
      * statement and the exact amount in a note), and the exact one is wanted.
      */
     private mostPreciseRecord(records: NonNullable<XBRLRecord>): NonNullable<XBRLRecord>[number] {
-        const numeric = records.filter((record) => record.value && !isNaN(parseInt(record.value, 10)));
+        const numeric = records.filter((record) => XBRLDocument.parseAmount(record.value) !== null);
         if (numeric.length === 0) return records[0];
 
         return numeric.reduce((best, record) => ((record.decimals ?? -Infinity) > (best.decimals ?? -Infinity) ? record : best));

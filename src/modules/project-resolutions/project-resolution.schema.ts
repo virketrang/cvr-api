@@ -337,7 +337,7 @@ export const responseSchema = z
         ),
         warnings: z.array(
             z.object({
-                code: z.enum(["BALANCE_INCOMPLETE", "REPORTS_FAILED", "REPORT_SKIPPED"]),
+                code: z.enum(["BALANCE_INCOMPLETE", "REPORTS_FAILED", "REPORT_SKIPPED", "SOLO_FIGURES_MISSING"]),
                 cvr: z.string().nullable(),
                 companyName: z.string().nullable(),
                 reportingPeriodEndDate: z.string().nullable(),

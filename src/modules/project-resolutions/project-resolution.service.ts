@@ -136,6 +136,23 @@ export default abstract class ProjectResolutionService {
                 });
             }
 
+            // IFRS filers need not tag the parent company's own statements, and most
+            // do not: such reports carry group figures only, so the valuation and the
+            // passive test get nothing for them. Say so once, with the periods.
+            const consolidatedOnly = reports.filter((report) => report.scope === "consolidated");
+            if (consolidatedOnly.length > 0) {
+                warnings.push({
+                    code: "SOLO_FIGURES_MISSING",
+                    cvr: company.cvr,
+                    companyName: company.name,
+                    reportingPeriodEndDate: consolidatedOnly[0].reportingPeriod.reportingPeriodEndDate,
+                    message:
+                        `${company.name}: årsrapporten er aflagt efter IFRS og indeholder kun koncerntal struktureret ` +
+                        `(${consolidatedOnly.map((report) => report.reportingPeriod.reportingPeriodEndDate).join(", ")}). ` +
+                        `Selskabets egne tal skal indtastes manuelt fra den læsbare årsrapport.`,
+                });
+            }
+
             const ctx: ResolutionContext = {
                 mode,
                 isParent,
