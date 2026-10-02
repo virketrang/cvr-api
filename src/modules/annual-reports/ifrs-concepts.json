@@ -1,0 +1,976 @@
+{
+  "ifrs-dk:BankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:BondLoans": {
+    "label": "Obligationslån",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:ConstructionContracts": {
+    "label": "Entreprise kontrakter",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentBankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentBondLoans": {
+    "label": "Obligationslån",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentMortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentPrepaymentsFromCustomers": {
+    "label": "Forudbetalinger fra kunder",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentReceivablesFromAssociates": {
+    "label": "Kortfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentReceivablesFromJointVentures": {
+    "label": "Kortfristede tilgodehavender hos joint ventures",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentReceivablesFromSubsidaries": {
+    "label": "Kortfristede tilgodehavender hos datterselskaber",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:CurrentSecurities": {
+    "label": "CurrentSecurities",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:DepreciationAmortisationExpenseAndImpairmentLossesOfPropertyPlantAndEquipmentAndIntangibleAssetsRecognisedInProfitOrLoss": {
+    "label": "DepreciationAmortisationExpenseAndImpairmentLossesOfPropertyPlantAndEquipmentAndIntangibleAssetsRecognisedInProfitOrLoss",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:DevelopmentExpenditure": {
+    "label": "DevelopmentExpenditure",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:ExternalExpenses": {
+    "label": "Eksterne omkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:GainsLossesFromSubsidiariesJointVenturesAndAssociates": {
+    "label": "Resultat fra datterselskaber, joint ventures og associerede virksomheder",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:GrossResult": {
+    "label": "Bruttoresultat",
+    "periodType": "duration"
+  },
+  "ifrs-dk:ImpairmentOfFinancialAssets": {
+    "label": "ImpairmentOfFinancialAssets",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:LeaseholdImprovements": {
+    "label": "Indretning af lejede lokaler",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:MortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NetSales": {
+    "label": "Nettoomsætning",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:NonCurrentPayablesToShareholdersAndManagement": {
+    "label": "NonCurrentPayablesToShareholdersAndManagement",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentBankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentBonds": {
+    "label": "Langfristede obligationer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentInvestments": {
+    "label": "Langfristede investeringer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentMortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentPayablesToAssociates": {
+    "label": "Langfristede gæld til associerede virksomheder",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentPayablesToJointVentures": {
+    "label": "Langfristede gæld til joint ventures",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentPayablesToSubsidiaries": {
+    "label": "Langfristede gæld til datterselskaber",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentReceivablesFromAssociates": {
+    "label": "Langfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:NoncurrentReceivablesFromJointVentures": {
+    "label": "Langfristede tilgodehavender hos joint ventures",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:OtherExternalExpenses": {
+    "label": "OtherExternalExpenses",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:OtherPlantFixturesAndFittingsToolsAndEquipment": {
+    "label": "OtherPlantFixturesAndFittingsToolsAndEquipment",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:PlantAndMachinery": {
+    "label": "PlantAndMachinery",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:PrepaymentsForPropertyPlantAndEquipment": {
+    "label": "PrepaymentsForPropertyPlantAndEquipment",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:ProfitLossInAssociates": {
+    "label": "Resultat i associerede virksomheder",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:ProfitLossInJointVentures": {
+    "label": "Resultat i joint ventures",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:ProfitLossInSubsidiaries": {
+    "label": "Resultat i datterselskaber",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:ProfitLossInSubsidiariesJointVenturesAndAssociates": {
+    "label": "Resultat i datterselskaber, Joint Ventures og associerede",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:PropertyPlantAndEquipmentInProgress": {
+    "label": "PropertyPlantAndEquipmentInProgress",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:PropertyPlantAndEquipmentInProgressAndPrepaymentsForPropertyPlantAndEquipment": {
+    "label": "PropertyPlantAndEquipmentInProgressAndPrepaymentsForPropertyPlantAndEquipment",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:ResearchExpenditure": {
+    "label": "ResearchExpenditure",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:SalesCostAndDistributionsCosts": {
+    "label": "SalesCostAndDistributionsCosts",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToAssociates": {
+    "label": "Kortfristede gæld til associerede virksomheder",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToJointVentures": {
+    "label": "Kortfristede gæld til joint ventures",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToSubsidiaries": {
+    "label": "Kortfristede gæld til datterselskaber",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToAssociates": {
+    "label": "Gæld til associerede virksomheder",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToJointVentures": {
+    "label": "Gæld til joint ventures",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToShareholdersAndManagement": {
+    "label": "TradeAndOtherPayablesToShareholdersAndManagement",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToSubsidiaries": {
+    "label": "Gæld til datterselskaber",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-dk:TradeandOtherCurrentPayablesToShareholdersAndManagement": {
+    "label": "TradeandOtherCurrentPayablesToShareholdersAndManagement",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:AdministrativeExpense": {
+    "label": "Administrationsomkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:Aircraft": {
+    "label": "Fly [member]",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:AmortisationIntangibleAssetsOtherThanGoodwill": {
+    "label": "Afskrivninger, andre immaterielle aktiver end goodwill",
+    "periodType": "duration"
+  },
+  "ifrs-full:Assets": {
+    "label": "Aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:AverageNumberOfEmployees": {
+    "label": "Gennemsnitligt antal ansatte",
+    "periodType": "duration"
+  },
+  "ifrs-full:BiologicalAssets": {
+    "label": "Biologiske aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Borrowings": {
+    "label": "Lån",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Buildings": {
+    "label": "Bygninger",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Cash": {
+    "label": "Likvide beholdninger",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CashAndCashEquivalents": {
+    "label": "Likvider",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ChangesInInventoriesOfFinishedGoodsAndWorkInProgress": {
+    "label": "Fald (stigning) i lagre af færdigvarer og varer under fremstilling",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ConstructionInProgress": {
+    "label": "Igangværende opførelse",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ContractLiabilities": {
+    "label": "Kontraktlige forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CostOfSales": {
+    "label": "Vareforbrug",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:CountryOfIncorporationOfJointVenture": {
+    "label": "Indregistreringsland for joint venture",
+    "periodType": "duration"
+  },
+  "ifrs-full:CountryOfIncorporationOrResidenceOfAssociate": {
+    "label": "Land, hvor den associerede virksomhed er indregistreret",
+    "periodType": "duration"
+  },
+  "ifrs-full:CountryOfIncorporationOrResidenceOfSubsidiary": {
+    "label": "Land, hvor dattervirksomheden er indregistreret",
+    "periodType": "duration"
+  },
+  "ifrs-full:CurrentAssets": {
+    "label": "Kortfristede aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentContractAssets": {
+    "label": "Kortfristede kontraktlige aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentContractLiabilities": {
+    "label": "Kortfristede kontraktlige forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentDerivativeFinancialAssets": {
+    "label": "Kortfristede afledte finansielle aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentDerivativeFinancialLiabilities": {
+    "label": "Kortfristede afledte finansielle forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentLeaseLiabilities": {
+    "label": "Kortfristede leasingforpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentLiabilities": {
+    "label": "Kortfristede forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentPrepayments": {
+    "label": "Kortfristede periodeafgrænsningsposter",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentPrepaymentsAndCurrentAccruedIncomeOtherThanCurrentContractAssets": {
+    "label": "Kortfristede forudbetalinger og kortfristede periodiserede indtægter bortset fra kortfristede kontraktlige aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentRawMaterialsAndCurrentProductionSupplies": {
+    "label": "Aktuelle råvarer og aktuelle hjælpematerialer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentTaxAssetsCurrent": {
+    "label": "Aktuelle skatteaktiver, kortfristede",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentTaxLiabilities": {
+    "label": "Aktuelle skatteforpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentTaxLiabilitiesCurrent": {
+    "label": "Aktuelle skatteforpligtelser, kortfristede",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentTaxLiabilitiesNoncurrent": {
+    "label": "Aktuelle skatteforpligtelser, langfristede",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:CurrentTradeReceivables": {
+    "label": "Kortfristede tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DateOfEndOfReportingPeriod2013": {
+    "label": "Dato for afslutning af regnskabsperioden",
+    "periodType": "duration"
+  },
+  "ifrs-full:DeferredIncome": {
+    "label": "Periodiserede indtægter",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DeferredIncomeClassifiedAsCurrent": {
+    "label": "Periodiserede indtægter klassificeret som kortfristede",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DeferredIncomeClassifiedAsNoncurrent": {
+    "label": "Periodiserede indtægter klassificeret som langfristede",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DeferredTaxAssets": {
+    "label": "Udskudte skatteaktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DeferredTaxLiabilities": {
+    "label": "Udskudte skatteforpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DepreciationAmortisationAndImpairmentLossReversalOfImpairmentLossRecognisedInProfitOrLoss": {
+    "label": "Af- og nedskrivninger (tilbageførsel af nedskrivninger) indregnet i resultatopgørelsen",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:DepreciationAndAmortisationExpense": {
+    "label": "Afskrivninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:DerivativeFinancialAssets": {
+    "label": "Afledte finansielle aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DerivativeFinancialLiabilities": {
+    "label": "Afledte finansielle forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:DistributionCosts": {
+    "label": "Distributionsomkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:EmployeeBenefitsExpense": {
+    "label": "Omkostninger til personaleydelser",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:Equity": {
+    "label": "Egenkapital",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:EquityAndLiabilities": {
+    "label": "Passiver",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:EquityAttributableToOwnersOfParent": {
+    "label": "Egenkapital, der kan henføres til deltagere i modervirksomheden",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:FinanceCosts": {
+    "label": "Finansieringsomkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:FinanceIncome": {
+    "label": "Finansielle indtægter",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:FinishedGoods": {
+    "label": "Kortfristede færdigvarer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:FixturesAndFittings": {
+    "label": "Inventar",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:GainsLossesOnFairValueAdjustmentInvestmentProperty": {
+    "label": "Gevinster (tab) på dagsværdiregulering, investeringsejendomme",
+    "periodType": "duration"
+  },
+  "ifrs-full:Goodwill": {
+    "label": "Goodwill",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:GrossProfit": {
+    "label": "Bruttoresultat",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ImpairmentLossOnFinancialAssets": {
+    "label": "Nedskrivninger på finansielle aktiver",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ImpairmentLossRecognisedInProfitOrLossIntangibleAssetsOtherThanGoodwill": {
+    "label": "Nedskrivninger indregnet i resultatet, andre immaterielle aktiver end goodwill",
+    "periodType": "duration"
+  },
+  "ifrs-full:IncomeTaxExpenseContinuingOperations": {
+    "label": "Skatteomkostninger (-indtægter), fortsættende aktiviteter",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:IntangibleAssetsAndGoodwill": {
+    "label": "Immaterielle aktiver og goodwill",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:IntangibleAssetsOtherThanGoodwill": {
+    "label": "Andre immaterielle aktiver end goodwill",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:IntangibleAssetsUnderDevelopment": {
+    "label": "Immaterielle aktiver under udvikling",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Inventories": {
+    "label": "Kortfristede varebeholdninger",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentProperty": {
+    "label": "Investeringsejendomme",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentsInAssociates": {
+    "label": "Kapitalandele i associerede virksomheder",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentsInAssociatesAccountedForUsingEquityMethod": {
+    "label": "Investeringer i associerede virksomheder, som regnskabsmæssigt behandles efter indre værdis metode",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentsInJointVentures": {
+    "label": "Kapitalandele i joint ventures",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentsInJointVenturesAccountedForUsingEquityMethod": {
+    "label": "Kapitalandele i joint ventures, der regnskabsmæssigt behandles efter indre værdis metode",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:InvestmentsInSubsidiaries": {
+    "label": "Kapitalandele i dattervirksomheder",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:IssuedCapital": {
+    "label": "Udstedt virksomhedskapital",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Land": {
+    "label": "Grunde",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:LandAndBuildings": {
+    "label": "Grunde og bygninger",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:LeaseLiabilities": {
+    "label": "Leasingforpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Liabilities": {
+    "label": "Forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:LiabilitiesIncludedInDisposalGroupsClassifiedAsHeldForSale": {
+    "label": "Forpligtelser omfattet af afståelsesgrupper klassificeret som værende bestemt for salg",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:LongtermBorrowings": {
+    "label": "Langfristet del af langfristede lån",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Machinery": {
+    "label": "Maskiner",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Merchandise": {
+    "label": "Kortfristede handelsvarer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NameOfAssociate": {
+    "label": "Navn på associeret virksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:NameOfJointVenture": {
+    "label": "Navn på joint venture",
+    "periodType": "duration"
+  },
+  "ifrs-full:NameOfSubsidiary": {
+    "label": "Navn på dattervirksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:NoncontrollingInterests": {
+    "label": "Minoritetsinteresser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentAssets": {
+    "label": "Langfristede aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentAssetsOrDisposalGroupsClassifiedAsHeldForSale": {
+    "label": "Langfristede aktiver eller afståelsesgrupper klassificeret som bestemt for salg",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentContractAssets": {
+    "label": "Langfristede kontraktlige aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentContractLiabilities": {
+    "label": "Langfristede kontraktlige forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentDerivativeFinancialLiabilities": {
+    "label": "Langfristede afledte finansielle forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentInvestmentsOtherThanInvestmentsAccountedForUsingEquityMethod": {
+    "label": "Andre langfristede kapitalandele end kapitalandele, der regnskabsmæssigt behandles efter indre værdis metode",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentLeaseLiabilities": {
+    "label": "Langfristede leasingforpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentLiabilities": {
+    "label": "Langfristede forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentPayablesToRelatedParties": {
+    "label": "Langfristede gæld til nærtstående parter",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentPayablesToTradeSuppliers": {
+    "label": "Langfristet leverandørgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentReceivablesDueFromRelatedParties": {
+    "label": "Langfristede tilgodehavender hos nærtstående parter",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:NoncurrentRecognisedLiabilitiesDefinedBenefitPlan": {
+    "label": "Langfristet ydelsesbaseret nettopensionsforpligtelse",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherCurrentFinancialAssets": {
+    "label": "Andre kortfristede finansielle aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherCurrentPayables": {
+    "label": "Anden kortfristet gæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherCurrentReceivables": {
+    "label": "Andre kortfristede tilgodehavender",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherEmployeeExpense": {
+    "label": "Andre personaleomkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:OtherExpenseByFunction": {
+    "label": "Andre driftsomkostninger, efter funktion",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:OtherExpenseByNature": {
+    "label": "Andre driftsomkostninger, efter art",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:OtherIncome": {
+    "label": "Andre driftsindtægter",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:OtherLongtermProvisions": {
+    "label": "Andre langfristede hensatte forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherNoncurrentFinancialAssets": {
+    "label": "Andre langfristede finansielle aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherNoncurrentPayables": {
+    "label": "Anden langfristet gæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherNoncurrentReceivables": {
+    "label": "Andre langfristede tilgodehavender",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherOperatingIncomeExpense": {
+    "label": "Andre driftsindtægter (-omkostninger)",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:OtherProvisions": {
+    "label": "Andre hensatte forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherReserves": {
+    "label": "Andre reserver",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherShorttermProvisions": {
+    "label": "Andre kortfristede hensatte forpligtelser",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:OtherWorkPerformedByEntityAndCapitalised": {
+    "label": "Andet arbejde udført af virksomheden og aktiveret",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:PostemploymentBenefitExpenseInProfitOrLoss": {
+    "label": "Omkostninger vedrørende pensionsydelser i resultatet",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:PrincipalPlaceOfBusinessOfAssociate": {
+    "label": "Hovedforretningssted for associeret virksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:PrincipalPlaceOfBusinessOfJointVenture": {
+    "label": "Hovedforretningssted for joint venture",
+    "periodType": "duration"
+  },
+  "ifrs-full:PrincipalPlaceOfBusinessOfSubsidiary": {
+    "label": "Hovedforretningssted for dattervirksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLoss": {
+    "label": "Resultat",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossAttributableToNoncontrollingInterests": {
+    "label": "Resultat, der kan henføres til minoritetsinteresser",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossAttributableToOwnersOfParent": {
+    "label": "Resultat, der kan henføres til deltagere i modervirksomheden",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossBeforeTax": {
+    "label": "Resultat før skat",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossFromContinuingOperations": {
+    "label": "Resultat af fortsættende aktiviteter",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossFromDiscontinuedOperations": {
+    "label": "Resultat af ophørte aktiviteter",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProfitLossFromOperatingActivities": {
+    "label": "Resultat af primær drift",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:PropertyPlantAndEquipment": {
+    "label": "Materielle aktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ProportionOfOwnershipInterestInAssociate": {
+    "label": "Ejerandel i associeret virksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProportionOfOwnershipInterestInJointVenture": {
+    "label": "Ejerandel i joint venture",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProportionOfOwnershipInterestInSubsidiary": {
+    "label": "Ejerandel af dattervirksomhed",
+    "periodType": "duration"
+  },
+  "ifrs-full:ProportionOfVotingRightsHeldInJointVenture": {
+    "label": "Andel af stemmerettigheder i joint venture",
+    "periodType": "duration"
+  },
+  "ifrs-full:RawMaterials": {
+    "label": "Kortfristede råvarer",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:RawMaterialsAndConsumablesUsed": {
+    "label": "Anvendte råvarer og hjælpematerialer",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:RecognisedLiabilitiesDefinedBenefitPlan": {
+    "label": "Ydelsesbaseret nettopensionsforpligtelse",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ResearchAndDevelopmentExpense": {
+    "label": "Forsknings- og udviklingsomkostninger",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ReserveOfCashFlowHedges": {
+    "label": "Reserve for sikring af pengestrømme",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:RetainedEarnings": {
+    "label": "Overført resultat",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:RevaluationSurplus": {
+    "label": "Opskrivningsreserve",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Revenue": {
+    "label": "Omsætning",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:RightofuseAssets": {
+    "label": "Brugsretsaktiver",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ShareOfProfitLossOfAssociatesAccountedForUsingEquityMethod": {
+    "label": "Andel af resultatet i associerede virksomheder, som er regnskabsmæssigt behandlet efter den indre værdis metode",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ShareOfProfitLossOfAssociatesAndJointVenturesAccountedForUsingEquityMethod": {
+    "label": "Andel af resultat af associerede virksomheder og joint ventures, som regnskabsmæssigt behandles efter indre værdis metode",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:ShareOfProfitLossOfJointVenturesAccountedForUsingEquityMethod": {
+    "label": "Andel af resultatet i joint ventures, som er regnskabsmæssigt behandlet ved anvendelse af den indre værdis metode",
+    "balance": "credit",
+    "periodType": "duration"
+  },
+  "ifrs-full:SharePremium": {
+    "label": "Overkurs ved emission",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:Ships": {
+    "label": "Skibe",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:ShorttermBorrowings": {
+    "label": "Kortfristede lån",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:SocialSecurityContributions": {
+    "label": "Bidrag til social sikring",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:TradeAndOtherCurrentPayablesToRelatedParties": {
+    "label": "Kortfristet gæld til nærtstående parter",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:TradeAndOtherCurrentPayablesToTradeSuppliers": {
+    "label": "Kortfristet leverandørgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:TradeAndOtherCurrentReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser og andre kortfristede tilgodehavender",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:TradeAndOtherCurrentReceivablesDueFromRelatedParties": {
+    "label": "Kortfristede tilgodehavender hos nærtstående parter",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "ifrs-full:TradeAndOtherPayablesToTradeSuppliers": {
+    "label": "Leverandørgæld",
+    "balance": "credit",
+    "periodType": "instant"
+  },
+  "ifrs-full:WagesAndSalaries": {
+    "label": "Løn og gager",
+    "balance": "debit",
+    "periodType": "duration"
+  },
+  "ifrs-full:WorkInProgress": {
+    "label": "Kortfristede varer under fremstilling",
+    "balance": "debit",
+    "periodType": "instant"
+  },
+  "gsd:ReportingPeriodStartDate": {
+    "label": "Regnskabsperiodens startdato",
+    "periodType": "duration"
+  },
+  "gsd:ReportingPeriodEndDate": {
+    "label": "Regnskabsperiodens slutdato",
+    "periodType": "duration"
+  }
+}

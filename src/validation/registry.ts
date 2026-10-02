@@ -53,6 +53,7 @@ export function runValidation(reports: Array<AnnualReport<Account>>, disabled: S
         const ctx: ReportContext = { report, allReports: reports, unit: roundingUnitForReport(report) };
         for (const check of registry) {
             if (check.scope !== "report" || disabled.has(check.id)) continue;
+            if (check.standards && !check.standards.includes(report.standard)) continue;
             runCheck(check, ctx, report.validation);
         }
     }
@@ -61,6 +62,7 @@ export function runValidation(reports: Array<AnnualReport<Account>>, disabled: S
     const companyCtx: ReportContext = { report: newest, allReports: reports, unit: roundingUnitForReport(newest) };
     for (const check of registry) {
         if (check.scope !== "company" || disabled.has(check.id)) continue;
+        if (check.standards && !check.standards.includes(newest.standard)) continue;
         runCheck(check, companyCtx, newest.validation);
     }
 }

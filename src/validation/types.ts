@@ -1,4 +1,4 @@
-import type { Account, AnnualReport } from "../modules/annual-reports/annual-report.types.js";
+import type { Account, AnnualReport, ReportingStandard } from "../modules/annual-reports/annual-report.types.js";
 
 export type Severity = "error" | "warning" | "info";
 
@@ -45,6 +45,13 @@ export interface ReportContext {
 export interface Check {
     id: string;
     scope: "report" | "company";
+    /**
+     * The reporting standards the check is meaningful for; every standard when
+     * omitted. Checks that lean on ÅRL's subtotal scheme (the concept tree, the
+     * gross-profit layouts, the equity-method reserve) are ÅRL-only: IFRS figures
+     * are mapped onto the same field names, but their subtotals differ.
+     */
+    standards?: ReportingStandard[];
     run(ctx: ReportContext): ValidationFinding[];
 }
 

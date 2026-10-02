@@ -1,5 +1,4 @@
 import environment from "../../environment.js";
-import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
 import type {
     Account,
     AnnualReport,
@@ -7,6 +6,7 @@ import type {
     BatchAnnualReportResponse,
     BatchAnnualReportResult,
     DanishBusinessRegistrationAccountingAPIResponse,
+    ExtractionHint,
     ExtractResult,
     GroupEntityFromNotes,
     PriorPeriodFigures,
@@ -15,7 +15,7 @@ import type {
     UnprocessedAnnualReport,
 } from "./annual-report.types.js";
 
-import { extractGroupEntities } from "./annual-report.notes-extraction.js";
+import { extractGroupEntities, extractIfrsGroupEntities, normalizeEntityName } from "./annual-report.notes-extraction.js";
 
 import XBRLDocument from "./annual-report.utils.js";
 import { parseDisabledChecks, runValidation, summarize } from "../../validation/registry.js";
@@ -74,13 +74,36 @@ export default abstract class AnnualReportService {
             },
         );
 
-        const financialStatements = data.hits.hits.map((hit) => hit._source);
+        // One filing per financial year. Interim reports (delårs-/halvårsrapporter)
+        // are listed as "regnskab" too, and in the first ESEF years some were even
+        // typed AARSRAPPORT — they share the annual report's start date, so per
+        // start date the longest period wins. A re-filing (omgørelse) of the same
+        // period supersedes the earlier one: the latest loaded wins.
+        const ANNUAL_DOCUMENT_TYPES = new Set(["AARSRAPPORT", "AARSRAPPORT_ESEF"]);
+        const perStartDate = new Map<string, (typeof data.hits.hits)[number]["_source"]>();
+        for (const hit of data.hits.hits) {
+            const filing = hit._source;
+            if (!filing.dokumenter.some((document) => ANNUAL_DOCUMENT_TYPES.has(document.dokumentType))) continue;
+            const { startDato, slutDato } = filing.regnskab.regnskabsperiode;
+            const current = perStartDate.get(startDato);
+            const supersedes =
+                !current ||
+                slutDato > current.regnskab.regnskabsperiode.slutDato ||
+                (slutDato === current.regnskab.regnskabsperiode.slutDato &&
+                    (filing.indlaesningsTidspunkt ?? "") > (current.indlaesningsTidspunkt ?? ""));
+            if (supersedes) perStartDate.set(startDato, filing);
+        }
+        const financialStatements = [...perStartDate.values()];
 
         const annualReports = await Promise.all(
             financialStatements.map(async (report) => {
                 const documents = await Promise.all(
                     report.dokumenter
-                        .filter((document) => document.dokumentMimeType === "application/xml")
+                        .filter(
+                            (document) =>
+                                document.dokumentMimeType === "application/xml" &&
+                                ANNUAL_DOCUMENT_TYPES.has(document.dokumentType),
+                        )
                         .map(async (document) => {
                             let xmlText = "";
                             if (!isUrlOnHost(document.dokumentUrl, DOCUMENT_HOST)) {
@@ -161,7 +184,11 @@ export default abstract class AnnualReportService {
             const newest = data.hits.hits[0]?._source;
             if (!newest) return [];
 
-            const document = newest.dokumenter.find((doc) => doc.dokumentMimeType === "application/xml");
+            // IFRS filers submit their figures in the ESEF instance next to a
+            // figure-less ÅRL stub; read the one that carries the notes.
+            const xmlDocuments = newest.dokumenter.filter((doc) => doc.dokumentMimeType === "application/xml");
+            const document =
+                xmlDocuments.find((doc) => doc.dokumentType === "AARSRAPPORT_ESEF") ?? xmlDocuments[0];
             if (!document || !isUrlOnHost(document.dokumentUrl, DOCUMENT_HOST)) return [];
 
             const xmlResponse = await fetchWithTimeout(document.dokumentUrl);
@@ -169,8 +196,12 @@ export default abstract class AnnualReportService {
 
             const xml = await readXmlResponseText(xmlResponse);
             const xbrlDocument = new XBRLDocument(xml);
+            const endDate = newest.regnskab.regnskabsperiode.slutDato;
+            const { standard } = xbrlDocument.getStandard();
 
-            return extractGroupEntities(xbrlDocument, newest.regnskab.regnskabsperiode.slutDato);
+            return standard === "IFRS-DK" || standard === "ESEF"
+                ? extractIfrsGroupEntities(xbrlDocument, endDate)
+                : extractGroupEntities(xbrlDocument, endDate);
         } catch (error) {
             console.warn(
                 `Kunne ikke udlæse koncernoplysninger fra noterne for CVR ${cvrNumber}: ` +
@@ -187,18 +218,11 @@ export default abstract class AnnualReportService {
      * report exactly which taxonomy was encountered.
      */
     private static describeUnsupportedTaxonomy(taxonomy: string): string {
-        if (/ifrs|esef/i.test(taxonomy)) {
-            return (
-                "Årsrapporten er aflagt efter IFRS/ESEF-taksonomien, som ikke understøttes. " +
-                "Det gælder typisk børsnoterede og andre store virksomheder — tallene skal indtastes manuelt."
-            );
-        }
-
         const schemaFile = taxonomy.split("/").pop() ?? taxonomy;
         return `Årsrapporten anvender en ikke-understøttet taksonomi (${schemaFile}) og kunne ikke læses.`;
     }
 
-    public static extractAnnualReportFromXML(xml: string): ExtractResult {
+    public static extractAnnualReportFromXML(xml: string, hint: ExtractionHint = {}): ExtractResult {
         // The XBRLDocument constructor and extractTaxonomyData throw AppErrors with
         // specific codes (MALFORMED_XML, MISSING_NAMESPACE, MALFORMED_UNIT,
         // MISSING_PERIOD). Catch them here and convert to a typed skip reason so the
@@ -206,9 +230,9 @@ export default abstract class AnnualReportService {
         try {
             const xbrlDocument = new XBRLDocument(xml);
 
-            const taxonomy = xbrlDocument.getTaxonomy();
+            const { standard, schemaRef, generalDataOnly } = xbrlDocument.getStandard();
 
-            if (!taxonomy) {
+            if (!schemaRef) {
                 return {
                     ok: false,
                     errorCode: ErrorCode.UNKNOWN_TAXONOMY,
@@ -216,17 +240,26 @@ export default abstract class AnnualReportService {
                 };
             }
 
-            const acceptedTaxonomies: string[] = ÅRL_TAXONOMY.schema;
-
-            if (!acceptedTaxonomies.some((t) => taxonomy.includes(t))) {
+            if (generalDataOnly) {
                 return {
                     ok: false,
-                    errorCode: ErrorCode.UNKNOWN_TAXONOMY,
-                    message: AnnualReportService.describeUnsupportedTaxonomy(taxonomy),
+                    errorCode: ErrorCode.NO_DATA,
+                    message:
+                        "Dokumentet indeholder kun stamdata (ÅRL-instansen til en IFRS-indberetning); " +
+                        "regnskabstallene ligger i indberetningens ESEF-instans.",
+                    generalDataOnly: true,
                 };
             }
 
-            const { report, priorFigures } = xbrlDocument.extractTaxonomyData();
+            if (!standard) {
+                return {
+                    ok: false,
+                    errorCode: ErrorCode.UNKNOWN_TAXONOMY,
+                    message: AnnualReportService.describeUnsupportedTaxonomy(schemaRef),
+                };
+            }
+
+            const { report, priorFigures } = xbrlDocument.extractTaxonomyData(hint);
 
             return { ok: true, report, priorFigures };
         } catch (error) {
@@ -260,27 +293,45 @@ export default abstract class AnnualReportService {
         const skipped: ReportSkip[] = [];
 
         for (const xmlAnnualReport of xmlAnnualReports) {
-            for (const document of xmlAnnualReport.documents) {
-                const result = AnnualReportService.extractAnnualReportFromXML(document.xmlText);
+            const hint: ExtractionHint = xmlAnnualReport.reportingPeriod
+                ? { reportingPeriod: { startDate: xmlAnnualReport.reportingPeriod.startDate, endDate: xmlAnnualReport.reportingPeriod.endDate } }
+                : {};
 
-                if (result.ok) {
-                    extracted.push({ report: result.report, priorFigures: result.priorFigures });
-                } else {
-                    // Record WHY this document was dropped, with the year + document URL,
-                    // so the client can tell the user (e.g. "2023: unknown taxonomy").
-                    skipped.push({
-                        reportingPeriodEndDate: xmlAnnualReport.reportingPeriod?.endDate ?? null,
-                        documentUrl: document.dokumentUrl ?? null,
-                        errorCode: result.errorCode,
-                        message: result.message,
-                    });
-                    console.warn(
-                        `Skipped report for CVR ${xmlAnnualReport.cvrNumber} (${result.errorCode}) ` +
-                            `[${xmlAnnualReport.reportingPeriod?.endDate ?? "ukendt periode"}]: ${result.message}`,
-                    );
-                }
+            const outcomes = xmlAnnualReport.documents.map((document) => ({
+                document,
+                result: AnnualReportService.extractAnnualReportFromXML(document.xmlText, hint),
+            }));
+
+            const assembled = AnnualReportService.assembleFiling(outcomes);
+            extracted.push(...assembled.reports);
+
+            for (const { document, result } of assembled.skipped) {
+                // Record WHY this document was dropped, with the year + document URL,
+                // so the client can tell the user (e.g. "2023: unknown taxonomy").
+                skipped.push({
+                    reportingPeriodEndDate: xmlAnnualReport.reportingPeriod?.endDate ?? null,
+                    documentUrl: document.dokumentUrl ?? null,
+                    errorCode: result.errorCode,
+                    message: result.message,
+                });
+                console.warn(
+                    `Skipped report for CVR ${xmlAnnualReport.cvrNumber} (${result.errorCode}) ` +
+                        `[${xmlAnnualReport.reportingPeriod?.endDate ?? "ukendt periode"}]: ${result.message}`,
+                );
             }
         }
+
+        // The registry's period and the document's own can disagree (an interim
+        // instance filed under the annual report's entry), so de-duplicate once more
+        // on the extracted periods: per start date the longest period is the annual
+        // report; among equals the later filing wins.
+        const byStartDate = new Map<string, (typeof extracted)[number]>();
+        for (const entry of extracted) {
+            const { reportingPeriodStartDate: start, reportingPeriodEndDate: end } = entry.report.reportingPeriod;
+            const current = byStartDate.get(start);
+            if (!current || end >= current.report.reportingPeriod.reportingPeriodEndDate) byStartDate.set(start, entry);
+        }
+        extracted.splice(0, extracted.length, ...byStartDate.values());
 
         AnnualReportService.addPriorYearMismatchWarnings(extracted);
 
@@ -322,6 +373,84 @@ export default abstract class AnnualReportService {
             skipped,
             validationSummary: summarize(annualReports),
         };
+    }
+
+    /**
+     * One report per filing from the documents it consists of.
+     *
+     * An ÅRL filing has one XBRL instance. An IFRS filing has two: the ESEF
+     * instance with the figures (AARSRAPPORT_ESEF) and an ÅRL instance that is
+     * usually a figure-less stub with the general data — but a group may also
+     * file the parent company's own statements under ÅRL there, in which case
+     * those become the report's solo statements. Stubs are dropped silently when
+     * the ESEF instance was read; a stub on its own is reported, so the caller
+     * learns why a filing has no figures.
+     */
+    public static assembleFiling(
+        outcomes: Array<{ document: UnprocessedAnnualReport["documents"][number]; result: ExtractResult }>,
+    ): {
+        reports: Array<{ report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }>;
+        skipped: Array<{ document: UnprocessedAnnualReport["documents"][number]; result: Extract<ExtractResult, { ok: false }> }>;
+    } {
+        type Ok = { document: UnprocessedAnnualReport["documents"][number]; result: Extract<ExtractResult, { ok: true }> };
+        type Failed = { document: UnprocessedAnnualReport["documents"][number]; result: Extract<ExtractResult, { ok: false }> };
+
+        const ok = outcomes.filter((outcome): outcome is Ok => outcome.result.ok);
+        const failed = outcomes.filter((outcome): outcome is Failed => !outcome.result.ok);
+
+        const esef =
+            ok.find((outcome) => outcome.document.dokumentType === "AARSRAPPORT_ESEF") ??
+            ok.find((outcome) => outcome.result.report.standard === "ESEF");
+
+        if (esef) {
+            const parent = ok.find((outcome) => outcome !== esef && outcome.result.report.standard === "ÅRL");
+            if (parent) AnnualReportService.mergeParentStatements(esef.result, parent.result);
+
+            return {
+                reports: [{ report: esef.result.report, priorFigures: esef.result.priorFigures }],
+                skipped: failed.filter((outcome) => !outcome.result.generalDataOnly),
+            };
+        }
+
+        // No ESEF instance: every readable document is a report of its own. A stub
+        // only counts as a failure when nothing else in the filing could be read.
+        return {
+            reports: ok.map((outcome) => ({ report: outcome.result.report, priorFigures: outcome.result.priorFigures })),
+            skipped: ok.length > 0 ? failed.filter((outcome) => !outcome.result.generalDataOnly) : failed,
+        };
+    }
+
+    /**
+     * Fills an ESEF report's solo side from the parent company's ÅRL statements
+     * filed in the same filing, when the ESEF instance carries no parent figures.
+     */
+    private static mergeParentStatements(
+        esef: Extract<ExtractResult, { ok: true }>,
+        parent: Extract<ExtractResult, { ok: true }>,
+    ): void {
+        const report = esef.report;
+
+        if (report.scope === "consolidated") {
+            report.incomeStatement = parent.report.incomeStatement;
+            report.balancesheet = parent.report.balancesheet;
+            report.notes = parent.report.notes;
+            report.scope = "both";
+            report.soloStandard = "ÅRL";
+            report.unit = report.unit || parent.report.unit;
+
+            if (esef.priorFigures && parent.priorFigures && esef.priorFigures.endDate === parent.priorFigures.endDate) {
+                esef.priorFigures.incomeStatement = parent.priorFigures.incomeStatement;
+                esef.priorFigures.balanceSheet = parent.priorFigures.balanceSheet;
+            }
+        }
+
+        report.consolidatedFinancialStatements = parent.report.consolidatedFinancialStatements;
+        report.warnings.push(...parent.report.warnings);
+
+        const known = new Set(report.groupEntitiesFromNotes.map((entity) => normalizeEntityName(entity.name)));
+        for (const entity of parent.report.groupEntitiesFromNotes) {
+            if (!known.has(normalizeEntityName(entity.name))) report.groupEntitiesFromNotes.push(entity);
+        }
     }
 
     /** The most frequent skip reason, used as the company-level error when nothing parsed. */

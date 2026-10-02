@@ -80,6 +80,7 @@ function sumPresent(section: AccountSection, concepts: string[]): { sum: number;
 const res001: Check = {
     id: "RES-001",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const section = incomeSection(ctx);
         const gross = val(section, "grossProfitLoss") ?? val(section, "grossResult");
@@ -141,6 +142,7 @@ const res001: Check = {
 const res002: Check = {
     id: "RES-002",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const section = incomeSection(ctx);
         const operating = val(section, "profitLossFromOrdinaryOperatingActivities");
@@ -196,6 +198,7 @@ const res002: Check = {
 const res003: Check = {
     id: "RES-003",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const section = incomeSection(ctx);
         const beforeTax = val(section, "profitLossFromOrdinaryActivitiesBeforeTax");
@@ -248,6 +251,7 @@ const res003: Check = {
 const res004: Check = {
     id: "RES-004",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const section = incomeSection(ctx);
         const profitLoss = val(section, "profitLoss");

@@ -172,7 +172,22 @@ De to udgaver af "Taksonomien Illustreret" viser labels, formater og lovhenvisni
 - Den funktionsopdelte IFRS-DK-resultatopgørelse ligger tættest på ÅRL's opstilling og er det bedste udgangspunkt for mapningen. Den artsopdelte har personaleomkostninger og afskrivninger som egne linjer og ender i samme struktur fra EBIT og ned.
 - IFRS-DK har ingen DST- eller SKAT-felter; de findes kun i ÅRL.
 
-## 9. Hvad dokumenterne ændrer i den planlagte implementering
+## 9. Implementeringen (branch ifrs-esef-support, oktober 2026)
+
+Punkterne nedenfor er gennemført sådan:
+
+- Genkendelse: `XBRLDocument.getStandard()` i annual-report.utils.ts afgør ÅRL, IFRS-DK eller ESEF ud fra fakta-namespaces og markerer ÅRL-stubben som `generalDataOnly`.
+- Mapning: annual-report.taxonomy.ifrs.ts lister IFRS-kandidater pr. ÅRL-nøgle; labels og fortegn genereres fra pakkerne af scripts/build-ifrs-concepts.ts til ifrs-concepts.json.
+- Scope: samme kode læser begge dimensionsmodeller; IFRS-tal uden dimension lander under `consolidated`, `SeparateMember` på øverste niveau. Svaret har fået `standard`, `scope` og `soloStandard`.
+- Samling pr. indberetning: `AnnualReportService.assembleFiling()` vælger ESEF-instansen, dropper stubben og fletter et eventuelt ÅRL-moderselskabsregnskab ind som solo-tal. Delårsrapporter og genindberetninger sorteres fra pr. regnskabsårets startdato.
+- Koncernstruktur: ifrs-full's NameOfSubsidiary med ejerandel læses til `groupEntitiesFromNotes`.
+- Validering: ÅRL-specifikke kontroller (BAL-002/003/004/005, RES-001/002/003/004, XCH-002) kører kun på ÅRL-rapporter. IFRS-rapporter får BAL-001, SGN, SRC, SCL, PER, XCH-001 og RES-005.
+- Målt oktober 2026 på 38 tilfældige IFRS-aflæggere (387 rapporter): aktiver = passiver i 385, status success for alle, ingen udeladte dokumenter.
+- Kendt begrænsning: en IFRS-aflægger uden koncernregnskab opmærker sine egne tal uden dimension, og de kan ikke skelnes fra koncerntal i instansen. De lander derfor under `consolidated` med scope "consolidated", medmindre selskabet har brugt SeparateMember.
+
+Den oprindelige plan fra september følger.
+
+## 9a. Hvad dokumenterne ændrer i den planlagte implementering
 
 1. **ESEF er hovedsporet, IFRS-DK er historik.** Fra 1. juli 2025 indberetter alle IFRS-aflæggere ESEF plus ÅRL-stub. IFRS-DK-mapningen skal dække regnskabsår 2013–2024, men får ingen nye indberetninger.
 2. **Genkendelse på namespace.** IFRS = ifrs-full-namespace fra xbrl.ifrs.org til stede. IFRS-DK = tillige `ifrs-dk-cor`. ESEF = tillige `esef_cor` eller schemaRef uden for archprod. ÅRL-listen bevares.

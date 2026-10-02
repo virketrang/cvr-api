@@ -98,6 +98,7 @@ const bal001: Check = {
 const bal002: Check = {
     id: "BAL-002",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const section = balanceSection(ctx);
         if (val(section, "nonCurrentAssets") === undefined || val(section, "currentAssets") === undefined) return [];
@@ -110,6 +111,7 @@ const bal002: Check = {
 const bal003: Check = {
     id: "BAL-003",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const finding = residualFinding("BAL-003", ctx, "nonCurrentAssets", "Sammentælling af anlægsaktiver");
         return finding ? [finding] : [];
@@ -120,6 +122,7 @@ const bal003: Check = {
 const bal004: Check = {
     id: "BAL-004",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const finding = residualFinding("BAL-004", ctx, "liabilitiesAndEquity", "Sammentælling af passiver");
         return finding ? [finding] : [];
@@ -137,6 +140,7 @@ const COVERED_BY_DEDICATED_CHECKS = new Set(["assets", "nonCurrentAssets", "liab
 const bal005: Check = {
     id: "BAL-005",
     scope: "report",
+    standards: ["ÅRL"],
     run(ctx) {
         const findings: ValidationFinding[] = [];
         for (const concept of Object.keys(conceptTree)) {

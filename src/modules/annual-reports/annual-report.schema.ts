@@ -549,6 +549,30 @@ const annualReportSchema = z.object({
             example: "31-12-2022",
         }),
     }),
+    standard: z.enum(["ÅRL", "IFRS-DK", "ESEF"]).openapi({
+        description:
+            "Den taksonomi, årsrapportens primære opgørelser er opmærket efter. ÅRL for årsregnskabsloven; " +
+            "IFRS-DK for den danske IFRS-taksonomi (brugt til 2025); ESEF for EU's inline XBRL-format, som alle " +
+            "IFRS-aflæggere bruger fra 1. juli 2025. IFRS-tal er mappet til de samme feltnavne som ÅRL.",
+        example: "ÅRL",
+    }),
+    scope: z.enum(["solo", "consolidated", "both"]).openapi({
+        description:
+            "Hvilke tal årsrapporten indeholder: 'solo' = kun selskabets egne tal (felterne på øverste niveau); " +
+            "'consolidated' = kun koncernens tal (under consolidated; øverste niveau er tomt — det normale for " +
+            "IFRS-aflæggere, som ikke skal opmærke moderselskabet); 'both' = begge. En IFRS-aflægger uden " +
+            "koncernregnskab opmærker sine egne tal på samme måde som koncerntal, så de ligger også under consolidated.",
+        example: "solo",
+    }),
+    soloStandard: z
+        .enum(["ÅRL", "IFRS-DK", "ESEF"])
+        .nullable()
+        .openapi({
+            description:
+                "Taksonomien for tallene på øverste niveau, når de findes. Kan afvige fra standard: en IFRS-koncern " +
+                "kan indberette moderselskabets regnskab efter ÅRL. Null når årsrapporten ingen selskabstal har.",
+            example: "ÅRL",
+        }),
     unit: z.string().openapi({
         description: "Den valutaenhed, som alle beløb i årsrapporten er angivet i.",
         example: "DKK",

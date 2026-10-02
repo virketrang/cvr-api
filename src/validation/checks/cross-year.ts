@@ -145,6 +145,7 @@ const xch001: Check = {
 const xch002: Check = {
     id: "XCH-002",
     scope: "company",
+    standards: ["ÅRL"],
     run(ctx) {
         const findings: ValidationFinding[] = [];
 

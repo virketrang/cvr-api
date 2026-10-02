@@ -5,24 +5,79 @@ import type {
     AnnualReport,
     BalanceSheet,
     ConsolidatedFinancialStatementsSubsidiary,
+    ExtractionHint,
     FilteredRecord,
     IncomeStatement,
     Notes,
     PriorPeriodFigures,
     RelatedEntity,
-    ReportingPeriod,
+    ReportingStandard,
     ReportWarning,
     StatementName,
     TaxonomyFact,
+    TaxonomySection,
     XBRLContext,
     XBRLRecord,
 } from "./annual-report.types.js";
 
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
-import { extractGroupEntities } from "./annual-report.notes-extraction.js";
+import IFRS_TAXONOMY from "./annual-report.taxonomy.ifrs.js";
+import { extractGroupEntities, extractIfrsGroupEntities } from "./annual-report.notes-extraction.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
+
+/**
+ * Namespaces whose URI carries a version date, matched by pattern instead of
+ * literally. A TaxonomyFact names them by alias ("ifrs-full", "ifrs-dk").
+ *
+ * - ifrs-full: the IFRS Foundation taxonomy, one URI per yearly release
+ *   (http://xbrl.ifrs.org/taxonomy/2014-03-05/ifrs-full …; the 2011 release
+ *   used the prefix "ifrs" and the URI …/2011-03-25/ifrs).
+ * - ifrs-dk: Erhvervsstyrelsen's Danish IFRS additions, dated per release.
+ */
+const NAMESPACE_ALIASES: Record<string, RegExp> = {
+    "ifrs-full": /^https?:\/\/xbrl\.ifrs\.org\/taxonomy\/\d{4}-\d{2}-\d{2}\/ifrs(-full)?$/,
+    "ifrs-dk": /^https?:\/\/xbrl\.dcca\.dk\/ifrs-dk-cor_\d{4}-\d{2}-\d{2}$/,
+};
+
+/**
+ * How a taxonomy tells the company's own figures from the group's. The two
+ * models are mirror images: in ÅRL an undimensioned fact is the company's own
+ * (SoloMember is the default member), in IFRS it is the group's
+ * (ConsolidatedMember is the default of ifrs-full's axis) and the parent's
+ * figures, when tagged at all, carry SeparateMember. See
+ * docs/taksonomier-aarl-ifrs-esef.md §5.
+ */
+interface ScopeModel {
+    dimension: string;
+    consolidatedMember: string;
+    soloMember: string;
+    defaultScope: "solo" | "consolidated";
+}
+
+const ÅRL_SCOPE: ScopeModel = {
+    dimension: "ConsolidatedSoloDimension",
+    consolidatedMember: "ConsolidatedMember",
+    soloMember: "SoloMember",
+    defaultScope: "solo",
+};
+
+const IFRS_SCOPE: ScopeModel = {
+    dimension: "ConsolidatedAndSeparateFinancialStatementsAxis",
+    consolidatedMember: "ConsolidatedMember",
+    soloMember: "SeparateMember",
+    defaultScope: "consolidated",
+};
+
+/** What XBRLDocument.getStandard() found out about the filing. */
+export interface StandardInfo {
+    standard: ReportingStandard | null;
+    /** The schemaRef href, or null when missing/ambiguous. */
+    schemaRef: string | null;
+    /** True for the figure-less ÅRL instance IFRS filers submit next to their ESEF instance. */
+    generalDataOnly: boolean;
+}
 
 export default class XBRLDocument {
     public document: Document;
@@ -70,8 +125,80 @@ export default class XBRLDocument {
         });
     }
 
+    /** Prefixes declared for a namespace URI, or for an alias from NAMESPACE_ALIASES. */
     public getNamespacesFromURI(uri: string): string[] {
-        return Object.keys(this.namespaces).filter((key) => this.namespaces[key] === uri);
+        const pattern = NAMESPACE_ALIASES[uri];
+        return Object.keys(this.namespaces).filter((key) =>
+            pattern ? pattern.test(this.namespaces[key]) : this.namespaces[key] === uri,
+        );
+    }
+
+    /** True when at least one fact in the document belongs to the namespace (URI or alias). */
+    private hasFactsIn(uri: string): boolean {
+        const prefixes = this.getNamespacesFromURI(uri).map((prefix) => `${prefix.toLowerCase()}:`);
+        if (prefixes.length === 0) return false;
+        return this.elements.some((element) => {
+            const tagName = element.tagName.toLowerCase();
+            return prefixes.some((prefix) => tagName.startsWith(prefix));
+        });
+    }
+
+    private _standardCache: StandardInfo | null = null;
+
+    /**
+     * Which taxonomy the filing's figures are tagged with.
+     *
+     * Detection is by the facts' namespaces, not by the schemaRef: an IFRS filing's
+     * schemaRef points at the company's own extension taxonomy (or, for older
+     * IFRS-DK filings, at one of 128 entry points), so a list of accepted schemas
+     * cannot work there. ÅRL filings keep the schemaRef check against the known
+     * entry points, which also tells the figure-less general-data stub apart.
+     */
+    public getStandard(): StandardInfo {
+        if (this._standardCache) return this._standardCache;
+
+        const schemaRef = this.getTaxonomy();
+        let info: StandardInfo = { standard: null, schemaRef, generalDataOnly: false };
+
+        if (this.hasFactsIn("ifrs-full")) {
+            const isDanishIfrs =
+                this.getNamespacesFromURI("ifrs-dk").length > 0 ||
+                /\/ifrs\/entry-ifrs-dk|\/taxonomy\/extension\//.test(schemaRef ?? "");
+            info = { standard: isDanishIfrs ? "IFRS-DK" : "ESEF", schemaRef, generalDataOnly: false };
+        } else if (schemaRef && /ExcludingBalanceSheetIncomeStatement/.test(schemaRef)) {
+            info = { standard: "ÅRL", schemaRef, generalDataOnly: true };
+        } else if (schemaRef && ÅRL_TAXONOMY.schema.some((accepted) => schemaRef.includes(accepted))) {
+            info = { standard: "ÅRL", schemaRef, generalDataOnly: false };
+        }
+
+        this._standardCache = info;
+        return info;
+    }
+
+    /** The solo/consolidated dimension model of the filing's taxonomy. */
+    private get scopeModel(): ScopeModel {
+        const { standard } = this.getStandard();
+        return standard === "IFRS-DK" || standard === "ESEF" ? IFRS_SCOPE : ÅRL_SCOPE;
+    }
+
+    /**
+     * The reporting period read off the contexts, for instances without period
+     * facts (ESEF): the undimensioned duration context that ends last; among
+     * several with that end date, the longest one, i.e. the full year rather
+     * than a quarter.
+     */
+    public inferReportingPeriod(): { startDate: string; endDate: string } | null {
+        const candidates = Object.values(this.getContext()).filter(
+            (context) => context.dimensions.length === 0 && context.startDate && context.endDate,
+        );
+        if (candidates.length === 0) return null;
+
+        const best = candidates.reduce((a, b) => {
+            if (b.endDate! > a.endDate!) return b;
+            if (b.endDate! < a.endDate!) return a;
+            return b.startDate! < a.startDate! ? b : a;
+        });
+        return { startDate: best.startDate!, endDate: best.endDate! };
     }
 
     public getElementsByTagName({
@@ -378,12 +505,23 @@ export default class XBRLDocument {
      * explicit SoloMember.
      */
     private matchesScope(context: XBRLContext, scope: "solo" | "consolidated"): boolean {
-        const isOnly = (member: string) =>
-            context.dimensions.length === 1 &&
-            context.dimensions[0].dimension === "ConsolidatedSoloDimension" &&
-            context.dimensions[0].member === member;
+        const model = this.scopeModel;
+        const scopeMembers = context.dimensions.filter((d) => d.dimension === model.dimension);
 
-        return scope === "consolidated" ? isOnly("ConsolidatedMember") : context.dimensions.length === 0 || isOnly("SoloMember");
+        // Any other dimension (a note breakdown, a rounding variant, an equity
+        // component) means the fact is not the statement total.
+        if (scopeMembers.length !== context.dimensions.length) return false;
+        if (scopeMembers.length === 0) return model.defaultScope === scope;
+
+        const wanted = scope === "consolidated" ? model.consolidatedMember : model.soloMember;
+        return scopeMembers.length === 1 && scopeMembers[0].member === wanted;
+    }
+
+    /** True when the context's scope dimension (or its default) says "group". */
+    private isConsolidatedContext(context: XBRLContext): boolean {
+        const model = this.scopeModel;
+        const scopeMember = context.dimensions.find((d) => d.dimension === model.dimension);
+        return scopeMember ? scopeMember.member === model.consolidatedMember : model.defaultScope === "consolidated";
     }
 
     public createAccountFromXBRLRecord(
@@ -404,10 +542,8 @@ export default class XBRLDocument {
             // but the ConsolidatedSoloDimension still decides which scope the fact
             // belongs to — a solo note must not pick up koncern figures and vice versa.
             if (allowDimensional) {
-                const isConsolidatedContext = context.dimensions.some(
-                    (d) => d.dimension === "ConsolidatedSoloDimension" && d.member === "ConsolidatedMember",
-                );
-                return scope === "consolidated" ? isConsolidatedContext : !isConsolidatedContext;
+                const isConsolidated = this.isConsolidatedContext(context);
+                return scope === "consolidated" ? isConsolidated : !isConsolidated;
             }
 
             return this.matchesScope(context, scope);
@@ -430,8 +566,9 @@ export default class XBRLDocument {
         // member) to reconstruct the total. Both routes are unit-tagged, so the scale
         // is unambiguous — unlike the free-text roll-forward note, which we never
         // parse into a number.
+        const scopeDimension = this.scopeModel.dimension;
         const nonScopeDimensions = (record: NonNullable<XBRLRecord>[number]) =>
-            record.context!.dimensions.filter((d) => d.dimension !== "ConsolidatedSoloDimension");
+            record.context!.dimensions.filter((d) => d.dimension !== scopeDimension);
 
         const entityLevel = financialResults.filter((record) => nonScopeDimensions(record).length === 0);
         if (entityLevel.length > 0) {
@@ -580,7 +717,7 @@ export default class XBRLDocument {
         return (
             candidates.find((record) => (record.context?.dimensions.length ?? 0) === 0) ??
             candidates.find((record) =>
-                record.context!.dimensions.every((d) => d.dimension === "ConsolidatedSoloDimension"),
+                record.context!.dimensions.every((d) => d.dimension === this.scopeModel.dimension),
             ) ??
             candidates[0] ??
             null
@@ -648,59 +785,61 @@ export default class XBRLDocument {
             .filter((entity) => Object.values(entity).some((value) => value !== null));
     }
 
-    public extractTaxonomyData(): { report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null } {
-        const reportingPeriodXBRLRecords = {} as ReportingPeriod<XBRLRecord>;
-        const notesXBRLRecords = {} as Notes<XBRLRecord>;
-        const incomeStatementXBRLRecords = {} as IncomeStatement<XBRLRecord>;
-        const balanceSheetXBRLRecords = {} as BalanceSheet<XBRLRecord>;
+    /**
+     * Builds the report from the taxonomy that matches the filing's standard —
+     * ÅRL, or the IFRS mapping for IFRS-DK and ESEF instances (same field keys,
+     * candidate concepts in order of preference). `hint` is what the registry
+     * lists the filing under; it is used only when the document carries no
+     * period facts, which ESEF instances never do.
+     */
+    public extractTaxonomyData(hint: ExtractionHint = {}): {
+        report: AnnualReport<Account>;
+        priorFigures: PriorPeriodFigures | null;
+    } {
+        const { standard } = this.getStandard();
+        const isIfrs = standard === "IFRS-DK" || standard === "ESEF";
+        const taxonomy = isIfrs ? IFRS_TAXONOMY.body : ÅRL_TAXONOMY.body;
 
-        for (const key in ÅRL_TAXONOMY.body.reportingPeriod) {
-            if (Object.prototype.hasOwnProperty.call(ÅRL_TAXONOMY.body.reportingPeriod, key)) {
-                const taxonomyFact =
-                    ÅRL_TAXONOMY.body.reportingPeriod[key as keyof typeof ÅRL_TAXONOMY.body.reportingPeriod];
-                reportingPeriodXBRLRecords[key as keyof typeof reportingPeriodXBRLRecords] =
-                    this.extractTaxonomyField(taxonomyFact);
+        // A field may name several candidate concepts; keep each candidate's records, in order.
+        const recordsOf = (section: TaxonomySection): Record<string, XBRLRecord[]> => {
+            const out: Record<string, XBRLRecord[]> = {};
+            for (const [key, candidates] of Object.entries(section)) {
+                const facts = Array.isArray(candidates) ? candidates : [candidates];
+                out[key] = facts.map((fact) => this.extractTaxonomyField(fact));
             }
+            return out;
+        };
+
+        const reportingPeriodRecords = recordsOf(taxonomy.reportingPeriod as unknown as TaxonomySection);
+        const notesRecords = recordsOf(taxonomy.notes as unknown as TaxonomySection);
+        const incomeStatementRecords = recordsOf(taxonomy.incomeStatement as unknown as TaxonomySection);
+        const balanceSheetRecords = recordsOf(taxonomy.balanceSheet as unknown as TaxonomySection);
+
+        const periodDate = (key: string): string | null => {
+            for (const records of reportingPeriodRecords[key] ?? []) {
+                const value = this.primaryGeneralDataRecord(records)?.value;
+                if (value) return value;
+            }
+            return null;
+        };
+
+        let startDate = periodDate("reportingPeriodStartDate");
+        let endDate = periodDate("reportingPeriodEndDate");
+
+        if (isIfrs && (!startDate || !endDate)) {
+            const inferred = this.inferReportingPeriod() ?? hint.reportingPeriod ?? null;
+            startDate = startDate ?? inferred?.startDate ?? null;
+            endDate = endDate ?? inferred?.endDate ?? null;
         }
 
-        for (const key in ÅRL_TAXONOMY.body.notes) {
-            if (Object.prototype.hasOwnProperty.call(ÅRL_TAXONOMY.body.notes, key)) {
-                const taxonomyFact = ÅRL_TAXONOMY.body.notes[key as keyof typeof ÅRL_TAXONOMY.body.notes];
-                notesXBRLRecords[key as keyof typeof notesXBRLRecords] = this.extractTaxonomyField(taxonomyFact);
-            }
-        }
-
-        for (const key in ÅRL_TAXONOMY.body.incomeStatement) {
-            if (Object.prototype.hasOwnProperty.call(ÅRL_TAXONOMY.body.incomeStatement, key)) {
-                const taxonomyFact =
-                    ÅRL_TAXONOMY.body.incomeStatement[key as keyof typeof ÅRL_TAXONOMY.body.incomeStatement];
-                incomeStatementXBRLRecords[key as keyof typeof incomeStatementXBRLRecords] =
-                    this.extractTaxonomyField(taxonomyFact);
-            }
-        }
-
-        for (const key in ÅRL_TAXONOMY.body.balanceSheet) {
-            if (Object.prototype.hasOwnProperty.call(ÅRL_TAXONOMY.body.balanceSheet, key)) {
-                const taxonomyFact = ÅRL_TAXONOMY.body.balanceSheet[key as keyof typeof ÅRL_TAXONOMY.body.balanceSheet];
-                balanceSheetXBRLRecords[key as keyof typeof balanceSheetXBRLRecords] =
-                    this.extractTaxonomyField(taxonomyFact);
-            }
-        }
-
-        const startDateRecord = this.primaryGeneralDataRecord(reportingPeriodXBRLRecords.reportingPeriodStartDate);
-        const endDateRecord = this.primaryGeneralDataRecord(reportingPeriodXBRLRecords.reportingPeriodEndDate);
-
-        if (!startDateRecord?.value || !endDateRecord?.value) {
+        if (!startDate || !endDate) {
             throw new AppError(
                 ErrorCode.MISSING_PERIOD,
                 "Årsrapporten mangler en regnskabsperiode (start-/slutdato) og kunne ikke placeres.",
             );
         }
 
-        const reportingPeriod = {
-            reportingPeriodStartDate: startDateRecord.value,
-            reportingPeriodEndDate: endDateRecord.value,
-        };
+        const reportingPeriod = { reportingPeriodStartDate: startDate, reportingPeriodEndDate: endDate };
 
         // Build each statement's accounts, repairing the "decimals as scale" malformation
         // per fact (see repairScaling) and collecting every repair into one warning.
@@ -710,7 +849,7 @@ export default class XBRLDocument {
         const repairedFields: RepairedFields = [];
 
         const buildStatement = (
-            records: Record<string, XBRLRecord>,
+            records: Record<string, XBRLRecord[]>,
             statement: StatementName,
             allowDimensional: boolean,
             date: string = reportingPeriod.reportingPeriodEndDate,
@@ -719,8 +858,13 @@ export default class XBRLDocument {
         ): Record<string, Account> => {
             const result: Record<string, Account> = {};
 
-            for (const [key, record] of Object.entries(records)) {
-                const account = this.createAccountFromXBRLRecord(record, date, allowDimensional, scope);
+            for (const [key, candidates] of Object.entries(records)) {
+                // The first candidate concept tagged for the date and scope wins.
+                let account: ReturnType<XBRLDocument["createAccountFromXBRLRecord"]> = null;
+                for (const candidate of candidates) {
+                    account = this.createAccountFromXBRLRecord(candidate, date, allowDimensional, scope);
+                    if (account !== null) break;
+                }
 
                 if (account === null) continue;
 
@@ -736,40 +880,29 @@ export default class XBRLDocument {
             return result;
         };
 
-        const notes = buildStatement(
-            notesXBRLRecords as unknown as Record<string, XBRLRecord>,
-            "notes",
-            true,
-        ) as unknown as Notes<Account>;
-        const balanceSheet = buildStatement(
-            balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
-            "balanceSheet",
-            false,
-        ) as unknown as BalanceSheet<Account>;
-        const incomeStatement = buildStatement(
-            incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
-            "incomeStatement",
-            false,
-        ) as unknown as IncomeStatement<Account>;
+        const notes = buildStatement(notesRecords, "notes", true) as unknown as Notes<Account>;
+        const balanceSheet = buildStatement(balanceSheetRecords, "balanceSheet", false) as unknown as BalanceSheet<Account>;
+        const incomeStatement = buildStatement(incomeStatementRecords, "incomeStatement", false) as unknown as IncomeStatement<Account>;
 
-        // Koncernregnskabet: the same taxonomy fields valued in ConsolidatedMember
-        // contexts. Only present when the filing actually carries such facts.
+        // Koncernregnskabet: the same fields valued in consolidated contexts. Only
+        // present when the filing actually carries such facts. For IFRS filings the
+        // undimensioned facts ARE the group's, so this is normally the fuller side.
         const consolidatedBalanceSheet = buildStatement(
-            balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
+            balanceSheetRecords,
             "consolidatedBalanceSheet",
             false,
             reportingPeriod.reportingPeriodEndDate,
             "consolidated",
         );
         const consolidatedIncomeStatement = buildStatement(
-            incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
+            incomeStatementRecords,
             "consolidatedIncomeStatement",
             false,
             reportingPeriod.reportingPeriodEndDate,
             "consolidated",
         );
         const consolidatedNotes = buildStatement(
-            notesXBRLRecords as unknown as Record<string, XBRLRecord>,
+            notesRecords,
             "consolidatedNotes",
             true,
             reportingPeriod.reportingPeriodEndDate,
@@ -787,6 +920,9 @@ export default class XBRLDocument {
               }
             : null;
 
+        const hasSolo = Object.keys(balanceSheet).length > 0 || Object.keys(incomeStatement).length > 0;
+        const scope: AnnualReport<Account>["scope"] = hasSolo ? (consolidated ? "both" : "solo") : consolidated ? "consolidated" : "solo";
+
         // Comparative figures for the preceding period, used by the service to
         // cross-check the previous year's report. Repairs are discarded (see above).
         const priorEndDate = this.getPriorPeriodEndDate(reportingPeriod.reportingPeriodStartDate);
@@ -794,24 +930,10 @@ export default class XBRLDocument {
 
         if (priorEndDate) {
             const priorSink: RepairedFields = [];
-            const priorBalanceSheet = buildStatement(
-                balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
-                "balanceSheet",
-                false,
-                priorEndDate,
-                "solo",
-                priorSink,
-            );
-            const priorIncomeStatement = buildStatement(
-                incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
-                "incomeStatement",
-                false,
-                priorEndDate,
-                "solo",
-                priorSink,
-            );
+            const priorBalanceSheet = buildStatement(balanceSheetRecords, "balanceSheet", false, priorEndDate, "solo", priorSink);
+            const priorIncomeStatement = buildStatement(incomeStatementRecords, "incomeStatement", false, priorEndDate, "solo", priorSink);
             const priorConsolidatedBalanceSheet = buildStatement(
-                balanceSheetXBRLRecords as unknown as Record<string, XBRLRecord>,
+                balanceSheetRecords,
                 "consolidatedBalanceSheet",
                 false,
                 priorEndDate,
@@ -819,7 +941,7 @@ export default class XBRLDocument {
                 priorSink,
             );
             const priorConsolidatedIncomeStatement = buildStatement(
-                incomeStatementXBRLRecords as unknown as Record<string, XBRLRecord>,
+                incomeStatementRecords,
                 "consolidatedIncomeStatement",
                 false,
                 priorEndDate,
@@ -855,47 +977,56 @@ export default class XBRLDocument {
             });
         }
 
-        const groupEntitiesFromNotes = extractGroupEntities(this, reportingPeriod.reportingPeriodEndDate);
+        const groupEntitiesFromNotes = isIfrs
+            ? extractIfrsGroupEntities(this, reportingPeriod.reportingPeriodEndDate)
+            : extractGroupEntities(this, reportingPeriod.reportingPeriodEndDate);
 
-        const consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[] =
-            this.extractDimensionalGroup(
-                ÅRL_TAXONOMY.body.consolidatedFinancialStatements.subsidiaries,
-                reportingPeriod.reportingPeriodEndDate,
-            )
-                .map((group) => ({
-                    cvrNumber:
-                        group.identificationNumberCvrOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
-                    legalEntityIdentifier:
-                        group.legalEntityIdentifierOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
-                    pNumber: group.identificationNumberPnrOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
-                    name: group.relatedEntityNameConsolidatedFinancialStatements?.value ?? null,
-                    registeredOffice: group.relatedEntityRegisteredOfficeConsolidatedFinancialStatements?.value ?? null,
-                    placeWhereConsolidatedFinancialStatementsMayBeObtained:
-                        group.placeAtWhichConsolidatedFinancialStatementsMayBeObtainedIfParentIsNondanishEntity
-                            ?.value ?? null,
-                }))
-                .filter((subsidiary) => Object.values(subsidiary).some((value) => value !== null));
+        // The ÅRL note on which group's consolidated statements the company is part of.
+        const consolidatedFinancialStatements: ConsolidatedFinancialStatementsSubsidiary[] = isIfrs
+            ? []
+            : this.extractDimensionalGroup(
+                  ÅRL_TAXONOMY.body.consolidatedFinancialStatements.subsidiaries,
+                  reportingPeriod.reportingPeriodEndDate,
+              )
+                  .map((group) => ({
+                      cvrNumber:
+                          group.identificationNumberCvrOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
+                      legalEntityIdentifier:
+                          group.legalEntityIdentifierOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
+                      pNumber: group.identificationNumberPnrOfRelatedEntityConsolidatedFinancialStatements?.value ?? null,
+                      name: group.relatedEntityNameConsolidatedFinancialStatements?.value ?? null,
+                      registeredOffice: group.relatedEntityRegisteredOfficeConsolidatedFinancialStatements?.value ?? null,
+                      placeWhereConsolidatedFinancialStatementsMayBeObtained:
+                          group.placeAtWhichConsolidatedFinancialStatementsMayBeObtainedIfParentIsNondanishEntity
+                              ?.value ?? null,
+                  }))
+                  .filter((subsidiary) => Object.values(subsidiary).some((value) => value !== null));
 
-        // Extract unit from the first available account (prioritize key accounts)
+        // The currency: from the key accounts, solo first, then the group's.
         const unit =
             balanceSheet.assets?.unit ||
             incomeStatement.revenue?.unit ||
             incomeStatement.profitLoss?.unit ||
+            consolidated?.balancesheet.assets?.unit ||
             Object.values(balanceSheet).find((account) => account?.unit)?.unit ||
             Object.values(incomeStatement).find((account) => account?.unit)?.unit ||
+            Object.values(consolidated?.balancesheet ?? {}).find((account) => account?.unit)?.unit ||
             null;
 
         return {
             report: {
-                reportingPeriod: reportingPeriod,
-                unit: unit,
-                incomeStatement: incomeStatement,
+                reportingPeriod,
+                standard: standard ?? "ÅRL",
+                scope,
+                soloStandard: hasSolo ? (standard ?? "ÅRL") : null,
+                unit: unit as string,
+                incomeStatement,
                 balancesheet: balanceSheet,
-                notes: notes,
-                groupEntitiesFromNotes: groupEntitiesFromNotes,
-                consolidatedFinancialStatements: consolidatedFinancialStatements,
-                consolidated: consolidated,
-                warnings: warnings,
+                notes,
+                groupEntitiesFromNotes,
+                consolidatedFinancialStatements,
+                consolidated,
+                warnings,
                 // Filled by the validation engine (src/validation) after the
                 // company's full report list is assembled — some checks are
                 // cross-year and need every report.

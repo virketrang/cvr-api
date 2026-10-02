@@ -20,7 +20,25 @@ export interface ReportSkip {
  */
 export type ExtractResult =
     | { ok: true; report: AnnualReport<Account>; priorFigures: PriorPeriodFigures | null }
-    | { ok: false; errorCode: ErrorCode; message: string };
+    | {
+          ok: false;
+          errorCode: ErrorCode;
+          message: string;
+          /**
+           * True for the ÅRL "ExcludingBalanceSheetIncomeStatement" instance that IFRS
+           * filers submit next to their ESEF instance: general data only, no figures.
+           * The service drops it silently when the filing's ESEF instance was read.
+           */
+          generalDataOnly?: boolean;
+      };
+
+/** Which taxonomy a filing's figures are tagged with. */
+export type ReportingStandard = "ÅRL" | "IFRS-DK" | "ESEF";
+
+/** What the registry lists a filing under; used when the document carries no period facts. */
+export interface ExtractionHint {
+    reportingPeriod?: { startDate: string; endDate: string };
+}
 
 /**
  * The comparative (prior-period) figures a filing carries alongside its own
@@ -230,6 +248,9 @@ export type ReportWarning =
           }>;
       };
 
+/** A field of the report mapped to one concept (ÅRL) or to candidate concepts in order of preference (IFRS). */
+export type TaxonomySection = Record<string, TaxonomyFact | TaxonomyFact[]>;
+
 export interface ÅRLTaxonomy {
     schema: string[];
     body: {
@@ -273,6 +294,25 @@ export type AnnualReportResponse = {
 
 export interface AnnualReport<T> {
     reportingPeriod: ReportingPeriod<string>;
+    /**
+     * The taxonomy the filing's primary statements are tagged with. IFRS-DK is
+     * the Danish IFRS taxonomy used until the 2025 switch to ESEF; ESEF is the
+     * EU inline-XBRL format all IFRS filers use from then on.
+     */
+    standard: ReportingStandard;
+    /**
+     * Which figures the filing carries: "solo" = only the company's own
+     * (top-level statements), "consolidated" = only the group's (`consolidated`,
+     * top-level statements empty — the normal case for IFRS filers, which need
+     * not tag the parent company), "both" = both.
+     */
+    scope: "solo" | "consolidated" | "both";
+    /**
+     * The taxonomy of the top-level (solo) statements when they exist, which can
+     * differ from `standard`: an IFRS group may file the parent company's
+     * statements under ÅRL. Null when the filing has no solo figures.
+     */
+    soloStandard: ReportingStandard | null;
     unit: string;
     balancesheet: BalanceSheet<T>;
     incomeStatement: IncomeStatement<T>;

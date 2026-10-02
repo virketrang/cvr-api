@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { IFRS_GROUP_ENTITY_CONCEPTS, ifrsFact } from "./annual-report.taxonomy.ifrs.js";
 
 import type { GroupEntityFromNotes, RelatedEntity } from "./annual-report.types.js";
 import type XBRLDocument from "./annual-report.utils.js";
@@ -1100,4 +1101,58 @@ export function extractGroupEntitiesFromNotes(
     }
 
     return results;
+}
+
+/**
+ * Group entities from an IFRS instance: the subsidiaries, associates and joint
+ * ventures tagged with ifrs-full's name/ownership concepts, one entity per
+ * axis member. ESEF makes NameOfParentEntity mandatory but not the subsidiary
+ * list, so many filings yield nothing here. The ownership share is a decimal
+ * fraction in ifrs-full (0.6 = 60 %); shares above 1 are taken as percents.
+ * IFRS filings carry group figures by default, so `scope` is consolidated and
+ * no direct parent is inferred (see extractGroupEntities).
+ */
+export function extractIfrsGroupEntities(doc: XBRLDocument, reportingPeriodEndDate: string): GroupEntityFromNotes[] {
+    const entities: GroupEntityFromNotes[] = [];
+
+    for (const [relation, concepts] of Object.entries(IFRS_GROUP_ENTITY_CONCEPTS) as Array<
+        [keyof typeof IFRS_GROUP_ENTITY_CONCEPTS, (typeof IFRS_GROUP_ENTITY_CONCEPTS)[keyof typeof IFRS_GROUP_ENTITY_CONCEPTS]]
+    >) {
+        const group = Object.fromEntries(Object.entries(concepts).map(([field, qname]) => [field, ifrsFact(qname)]));
+
+        for (const entity of doc.extractDimensionalGroup(group, reportingPeriodEndDate)) {
+            const name = entity.name?.value?.trim();
+            if (!name) continue;
+
+            const share = parseFloat(entity.ownership?.value ?? "");
+            const percentage = Number.isFinite(share) && share > 0 ? (share <= 1 ? share * 100 : share <= 100 ? share : null) : null;
+            const votingShare = parseFloat(entity.votingRights?.value ?? "");
+            const votingPercentage =
+                Number.isFinite(votingShare) && votingShare > 0
+                    ? votingShare <= 1
+                        ? votingShare * 100
+                        : votingShare <= 100
+                          ? votingShare
+                          : null
+                    : null;
+
+            entities.push({
+                name,
+                cvrNumber: null,
+                country: entity.country?.value?.trim() || null,
+                registeredOffice: entity.place?.value?.trim() || null,
+                legalForm: null,
+                ownershipPercentage: percentage,
+                ownershipPercentageAsReported: Number.isFinite(share) ? share : null,
+                votingRightsPercentage: votingPercentage,
+                source: "structured",
+                sourceConcept: concepts.name.split(":")[1],
+                scope: "consolidated",
+                relation: relation === "subsidiary" ? "subsidiary" : "associate",
+                parent: null,
+            });
+        }
+    }
+
+    return entities;
 }
