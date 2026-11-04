@@ -12,6 +12,7 @@ import type {
     PriorPeriodFigures,
     ReportSkip,
     ReportWarning,
+    StatementName,
     UnprocessedAnnualReport,
 } from "./annual-report.types.js";
 
@@ -20,6 +21,7 @@ import { extractGroupEntities, extractIfrsGroupEntities, normalizeEntityName } f
 import XBRLDocument from "./annual-report.utils.js";
 import { parseDisabledChecks, runValidation, summarize } from "../../validation/registry.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
+import { formatDanishInteger } from "../../utils/format-number.js";
 import {
     basicAuthHeader,
     fetchUpstreamJson,
@@ -552,13 +554,53 @@ export default abstract class AnnualReportService {
             if (differences.length > 0) {
                 entry.report.warnings.push({
                     code: "PRIOR_YEAR_MISMATCH",
-                    message:
-                        "Et eller flere beløb i denne årsrapport afviger fra sammenligningstallene for samme " +
-                        "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse). Kontrollér tallene.",
+                    message: AnnualReportService.priorYearMismatchMessage(
+                        differences,
+                        next.report.reportingPeriod.reportingPeriodEndDate,
+                    ),
                     differences,
                 });
             }
         }
+    }
+
+    private static readonly STATEMENT_LABELS: Record<StatementName, string> = {
+        incomeStatement: "resultatopgørelse",
+        balanceSheet: "balance",
+        notes: "noter",
+        consolidatedIncomeStatement: "koncernresultatopgørelse",
+        consolidatedBalanceSheet: "koncernbalance",
+        consolidatedNotes: "koncernnoter",
+    };
+
+    /**
+     * The Danish PRIOR_YEAR_MISMATCH text: names each differing item, its amount in
+     * this report and in the following one, and the difference — largest
+     * difference first, so the items that matter most lead the list.
+     */
+    public static priorYearMismatchMessage(
+        differences: Extract<ReportWarning, { code: "PRIOR_YEAR_MISMATCH" }>["differences"],
+        nextReportEndDate: string,
+    ): string {
+        const signed = (value: number) => (value > 0 ? "+" : "") + formatDanishInteger(value);
+
+        const sorted = [...differences].sort(
+            (a, b) => Math.abs(b.valueInNextReport - b.value) - Math.abs(a.valueInNextReport - a.value),
+        );
+        const listed = sorted.map(
+            (d) =>
+                `${d.label} (${AnnualReportService.STATEMENT_LABELS[d.statement]}): ` +
+                `${formatDanishInteger(d.value)} → ${formatDanishInteger(d.valueInNextReport)} ` +
+                `(${signed(d.valueInNextReport - d.value)})`,
+        );
+
+        return (
+            `${sorted.length} beløb i denne årsrapport afviger fra ` +
+            `sammenligningstallene i den efterfølgende årsrapport (regnskabsår slut ${nextReportEndDate}), ` +
+            "typisk pga. en korrektion/omarbejdelse. Denne rapport → efterfølgende rapport (afvigelse): " +
+            listed.join("; ") +
+            ". Kontrollér tallene."
+        );
     }
 
     public static async getAnnualReportsBatch(cvrNumbers: number[]): Promise<BatchAnnualReportResponse> {
