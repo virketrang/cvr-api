@@ -27,6 +27,31 @@ export const paramSchema = z.object({
         }),
 });
 
+const dividendInEquitySchema = z.object({
+    value: z.number().openapi({
+        description:
+            "Den del af udbyttet, der indgår i den bogførte egenkapital på balancedagen: det oplyste beløb eller 0. Aldrig negativ.",
+        example: 1000000,
+    }),
+    reported: z.number().openapi({
+        description: "Beløbet, som det er oplyst i årsrapporten (uden fortegn).",
+        example: 1000000,
+    }),
+    status: z.enum(["inEquity", "notInEquity", "undetermined", "sameAsAnother"]).openapi({
+        description:
+            "inEquity: egenkapitalen stemmer kun, når beløbet regnes med. notInEquity: den stemmer kun uden beløbet " +
+            "(udbyttet er allerede udbetalt). undetermined: egenkapitalens poster kan ikke afgøre det; foreslået udbytte " +
+            "regnes da med, ekstraordinært udbytte regnes ikke med. sameAsAnother: beløbet er det samme som et af de " +
+            "to andre udbytter og er talt med dér.",
+        example: "inEquity",
+    }),
+    label: z.string().openapi({ example: "Foreslået udbytte indregnet under egenkapitalen" }),
+    note: z.string().nullable().openapi({
+        description: "Bemærkning til brugeren på dansk, når status kræver opmærksomhed; ellers null.",
+        example: null,
+    }),
+});
+
 const accountSchema = z.object({
     value: z.number().openapi({
         description: "Værdien af kontoen.",
@@ -578,7 +603,11 @@ const annualReportSchema = z.object({
         example: "DKK",
     }),
     notes: z.record(z.string(), accountSchema).openapi({
-        description: "En samling af noter, hvor hver note har en nøgle og en tilknyttet konto.",
+        description:
+            "En samling af noter, hvor hver note har en nøgle og en tilknyttet konto. extraordinaryDividendPaid er " +
+            "årets betalte ekstraordinære udbytte ifølge egenkapitalopgørelsen, altid positivt; det er en bevægelse " +
+            "og ikke en del af egenkapitalen på balancedagen. extraordinaryDividendDistributedAfterEndOfReportingPeriod " +
+            "er ekstraordinært udbytte udloddet efter regnskabsårets udløb.",
         example: {
             amortisationOfIntangibleAssets: {
                 value: 1000000,
@@ -592,6 +621,45 @@ const annualReportSchema = z.object({
             },
         },
     }),
+    dividendsInEquity: z
+        .object({
+            proposedDividend: dividendInEquitySchema.nullable().openapi({
+                description: "Foreslået (ordinært) udbytte indregnet under egenkapitalen.",
+            }),
+            extraordinaryDividend: dividendInEquitySchema.nullable().openapi({
+                description:
+                    "Ekstraordinært udbytte indregnet under egenkapitalen. Posten indeholder oftest et udbytte, der " +
+                    "allerede er udbetalt i året; value er da 0.",
+            }),
+            extraordinaryDividendAfterBalanceSheetDate: dividendInEquitySchema.nullable().openapi({
+                description: "Ekstraordinært udbytte udloddet efter regnskabsårets udløb.",
+            }),
+        })
+        .nullable()
+        .openapi({
+            description:
+                "Selskabets egne udbytter og den del af hvert, der indgår i den bogførte egenkapital på balancedagen. " +
+                "Summen af de tre value-felter er det, en værdiansættelse med udgangspunkt i den bogførte egenkapital " +
+                "skal fratrække for udlodninger efter balancedagen. Et udbytte, årsrapporten ikke oplyser, er null. " +
+                "Hele feltet er null, når årsrapporten ikke har selskabstal efter ÅRL.",
+            example: {
+                proposedDividend: {
+                    value: 1000000,
+                    reported: 1000000,
+                    status: "inEquity",
+                    label: "Foreslået udbytte indregnet under egenkapitalen",
+                    note: null,
+                },
+                extraordinaryDividend: {
+                    value: 0,
+                    reported: 700000,
+                    status: "notInEquity",
+                    label: "Ekstraordinært udbytte indregnet under egenkapitalen",
+                    note: null,
+                },
+                extraordinaryDividendAfterBalanceSheetDate: null,
+            },
+        }),
     groupEntitiesFromNotes: z.array(groupEntityFromNotesSchema).openapi({
         description:
             "Virksomheder nævnt i årsrapporten som (potentielt) en del af koncernen — taksonomiens " +
@@ -772,6 +840,7 @@ export const responseSchema = z.object({
                 },
                 unit: "DKK",
                 notes: {},
+                dividendsInEquity: null,
                 groupEntitiesFromNotes: [],
                 consolidatedFinancialStatements: [],
                 warnings: [],

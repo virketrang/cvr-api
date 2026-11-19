@@ -22,7 +22,7 @@ Detaljerede læsenotater pr. kilde ligger i [research/](research/).
 | ESMA: ESEF Reporting Manual, ESMA32-60-254 | opdateret okt. 2025 | ja, hele | 59 sider |
 | ESMA: ESEF XBRL Taxonomy Documentation | 2019 og 2024 | ja, begge | |
 | ESMA: ESEF validation rules | 2022 | ja | regneark |
-| Taksonomipakker: ÅRL 2025-10-01, IFRS-DK 2013–2022, ESEF 2022/2024/2025 | | ja, inspiceret | Yeti (CoreFiling) og ESMA |
+| Taksonomipakker: ÅRL 2025-10-01 og 2026-10-01, IFRS-DK 2013–2022, ESEF 2022/2024/2025 | | ja, inspiceret | Yeti (CoreFiling) og ESMA |
 
 Ikke tilgængelige: Erhvervsstyrelsens arkitekturdokument for IFRS-DK (2014), siden "Om IFRS taksonomien" og RTS-forordningens bilag II i tekstform. De to første er døde links; arkivkopierne er afskåret ved 1 MB.
 
@@ -59,7 +59,7 @@ Erhvervsstyrelsens ESEF-vejledning fastlægger arbejdsdelingen mellem de to taks
 
 Vejledningens pkt. 33: elementer fra ÅRL-taksonomien skal have `target="DKGAAP"`. Regnskab Special splitter derefter Inline XBRL-filen i to XBRL-filer efter target. Det er verificeret på styrelsens eget eksempelregnskab og på Vestas 2024:
 
-- **AARSRAPPORT, application/xml.** Target DKGAAP. schemaRef til `entryDanishGAAPExcludingBalanceSheetIncomeStatementIncludingManagementsReview<ÅÅÅÅ>1001.xsd`. Indeholder gsd, arr, mrv, sob, esg og en håndfuld fsa-begreber via `fsa/8EE_pre.xml` (antal ansatte, regnskabsklasse, tekster om regnskabspraksis). Ingen balance- eller resultattal.
+- **AARSRAPPORT, application/xml.** Target DKGAAP. schemaRef til `entryDanishGAAPExcludingBalanceSheetIncomeStatementIncludingManagementsReview<ÅÅÅÅ>1001.xsd`. Indeholder gsd, arr, mrv, sob, til og med 2025-pakken også esg, og en håndfuld fsa-begreber via `fsa/8EE_pre.xml` (antal ansatte, regnskabsklasse, tekster om regnskabspraksis). Ingen balance- eller resultattal.
 - **AARSRAPPORT_ESEF, application/xml.** Standardtarget. schemaRef til selskabets egen udvidelse, fx `xbrl.vestas.com/2024-12-31/VWS-2024-12-31.xsd`. Almindelig `xbrli:xbrl` med alle ifrs-full-tal. Ingen gsd-begreber, så regnskabsperioden må hentes fra registrets indeks eller fra stubben.
 - **AARSRAPPORT, application/xhtml+xml.** Selve Inline XBRL-filen med begge schemaRefs. Op til 75 MB. Unødvendig, når de to xml-filer findes.
 - **ESEF_EXTENSION, application/zip.** Selskabets udvidelsespakke efter styrelsens struktur (pkt. 1–29 i vejledningen). Indgangspunktet må kun importere `esef_cor.xsd`.
@@ -75,6 +75,9 @@ Målt i registret (30. september 2026): 2.199 indberetninger fra 679 selskaber h
 - **Ikke udvidelig**: instanser må ikke indeholde udvidelsesbegreber (arkitektur § 12). Teknisk regel TH10: præcis én schemaRef.
 - **Alle monetære begreber har `xbrli:balance`** (arkitektur 2015 § 14.4). Der findes ingen calculation-linkbase og ingen formel-linkbase med totaler.
 - 1.217 begreber, heraf 1.074 i fsa (2015-tal).
+- **2026-pakken (version 2026.11.11)** er bagudkompatibel: samme namespaces, samme fire indgangspunkter og samme standardmedlemmer, og ingen fsa-, gsd- eller cmn-begreber er fjernet. Tre ændringer er værd at kende. Esg-modulet og CSR- og dataetikbegreberne i ledelsesberetningen er udgået. 381 notebegreber i fsa har skiftet type fra streng til `textBlockItemType`, så noterne må forventes at komme som escaped XHTML. Og `ProposedExtraordinaryDividendRecognisedInEquity` er taget ud af balancen; begrebet findes derefter kun i resultatdisponeringen og noten hertil.
+- **Ekstraordinært udbytte** står to steder. Begrebet ovenfor læses til `balancesheet.proposedExtraordinaryDividendRecognisedInEquity`. I egenkapitalopgørelsen er det derimod en kolonne (`ProposedExtraordinaryDividendRecognisedInEquityMember` på `ClassesOfEquityDimension`) og linjen `ExtraordinaryDividendPaid`; det læses til `notes.extraordinaryDividendPaid`, altid positivt. Målt på 4.299 ÅRL-rapporter offentliggjort 11.–19. november 2026 havde ingen en ultimosaldo i kolonnen, og hvor begge felter fandtes, var de ens i alle 119 rapporter. Det nye felt er altså årets udbetaling, ikke en del af ultimoegenkapitalen, og må ikke bruges til at korrigere egenkapitalen.
+- **Udbytte i den bogførte egenkapital (`dividendsInEquity`).** En værdiansættelse med udgangspunkt i egenkapitalen på balancedagen skal fratrække udbytte, der udloddes efter balancedagen, men kun den del, der faktisk står i egenkapitalen. Rapporten har derfor tre beløb, hvert med `reported` (det oplyste) og `value` (den del, der indgår i egenkapitalen): foreslået udbytte, ekstraordinært udbytte indregnet under egenkapitalen og ekstraordinært udbytte udloddet efter regnskabsårets udløb (`ExtraordinaryDividendDistributedAfterEndOfReportingPeriodGross`, læst til `notes.extraordinaryDividendDistributedAfterEndOfReportingPeriod`). Om en udbyttepost indgår, afgøres ved at regne efter: egenkapitalen stemmer enten med posten eller uden. Kan det ikke afgøres, regnes foreslået udbytte med og ekstraordinært udbytte ikke. Udbytte udloddet efter regnskabsårets udløb ligger i overført resultat på balancedagen og regnes med, medmindre det er samme beløb som en af de to andre poster. Målt på de samme 4.299 rapporter: foreslået udbytte indgår i 1.838 af 1.855, ekstraordinært udbytte i 2 af 202 (i 9 er det samme beløb som det foreslåede og tælles kun én gang), og 16 rapporter oplyser udbytte udloddet efter regnskabsårets udløb. Logikken ligger i `annual-report.dividends.ts` og bruges også af `/api/project-resolutions`.
 
 ### IFRS-DK
 

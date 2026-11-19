@@ -131,8 +131,17 @@ export interface AdjustedEquity {
     /** Ordinary property book value + fair-value investment property, when non-zero. */
     landAndBuildings: number | null;
     sharesInSubsidiaries: Component[];
-    /** Parent company only. */
+    /**
+     * The three dividends below are for the parent company only, and each is
+     * the part that is in the book equity at the balance sheet date (see
+     * DividendsInEquity) — what the valuation deducts for distributions made
+     * after that date. Ordinary proposed dividend.
+     */
     proposedDividends: AccountValue | null;
+    /** Extraordinary dividend recognised in equity; null when none is in equity. */
+    extraordinaryDividends: AccountValue | null;
+    /** Extraordinary dividend distributed after the balance sheet date; null when none. */
+    dividendsAfterBalanceSheetDate: AccountValue | null;
 }
 
 export interface CapitalisedEarnings {

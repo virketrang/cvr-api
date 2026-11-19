@@ -436,6 +436,7 @@ export default abstract class AnnualReportService {
             report.incomeStatement = parent.report.incomeStatement;
             report.balancesheet = parent.report.balancesheet;
             report.notes = parent.report.notes;
+            report.dividendsInEquity = parent.report.dividendsInEquity;
             report.scope = "both";
             report.soloStandard = "ÅRL";
             report.unit = report.unit || parent.report.unit;

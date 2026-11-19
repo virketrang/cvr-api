@@ -66,6 +66,10 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
         "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20251001.xsd",
         "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20251001.xsd",
         "http://archprod.service.eogs.dk/taxonomy/20251001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20251001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20261001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20261001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20261001/entryDanishGAAPBalanceSheetAccountFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20261001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20261001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByNatureIncludingManagementsReviewStatisticsAndTax20261001.xsd",
+        "http://archprod.service.eogs.dk/taxonomy/20261001/entryDanishGAAPBalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByFunctionIncludingManagementsReviewStatisticsAndTax20261001.xsd",
     ],
     body: {
         reportingPeriod: {
@@ -103,6 +107,22 @@ const ÅRL_TAXONOMY: ÅRLTaxonomy = {
                 name: "AverageNumberOfEmployees",
                 namespace: "http://xbrl.dcca.dk/fsa",
                 label: "Gennemsnitligt antal ansatte",
+            },
+            // Read from the statement of changes in equity by
+            // XBRLDocument.extraordinaryDividendPaid, not by the generic note path.
+            extraordinaryDividendPaid: {
+                name: "ExtraordinaryDividendPaid",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Betalt ekstraordinært udbytte",
+                balance: "debit",
+            },
+            // The total; when only the individual distributions are tagged (one per
+            // typed member), XBRLDocument sums those instead.
+            extraordinaryDividendDistributedAfterEndOfReportingPeriod: {
+                name: "ExtraordinaryDividendDistributedAfterEndOfReportingPeriodGross",
+                namespace: "http://xbrl.dcca.dk/fsa",
+                label: "Ekstraordinært udbytte udloddet efter regnskabsårets udløb",
+                balance: "credit",
             },
         },
         informationOnRelatedEntities: {

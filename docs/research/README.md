@@ -27,6 +27,6 @@ Erhvervsstyrelsens HTML-sider afviser automatiske kald; de er læst via Internet
 - ESMA ESEF Reporting Manual: https://www.esma.europa.eu/sites/default/files/library/esma32-60-254_esef_reporting_manual.pdf
 - ESEF-taksonomier: https://www.esma.europa.eu/electronic-reporting/esef-taxonomy
 - ifrs-full-kerneskemaer: https://xbrl.ifrs.org/taxonomy/<dato>/full_ifrs/full_ifrs-cor_<dato>.xsd
-- ÅRL- og IFRS-DK-pakker: https://yeti2.corefiling.com/yeti/resources/yeti-gwt/Yeti.jsp (maskinlæsbart træ på `viewer/servlets/openTaxonomy.xml`, pakker på `viewer/servlets/downloadTaxonomy.zip?taxID=&verID=&projectID=2&reviewGroupID=1`)
+- ÅRL- og IFRS-DK-pakker: https://yeti2.corefiling.com/yeti/resources/yeti-gwt/Yeti.jsp. Maskinlæsbart træ på `https://yeti2.corefiling.com/yeti/viewer/servlets/openTaxonomy.xml`, pakker på `https://yeti2.corefiling.com/yeti/viewer/servlets/downloadTaxonomy.zip?taxID=&verID=&projectID=2&reviewGroupID=1`, hvor `taxID` er træets `taxonomyID` og `verID` er `entryPointVersion` for et af taksonomiens indgangspunkter
 
 Revisorvejledningerne og IFRS-DK-arkitekturdokumentet fra 2014 er døde links på erhvervsstyrelsen.dk, og Internet Archive har kun de første 1 MB af hver fil.

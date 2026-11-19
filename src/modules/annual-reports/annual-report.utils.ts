@@ -23,9 +23,17 @@ import type {
 import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
 import IFRS_TAXONOMY from "./annual-report.taxonomy.ifrs.js";
 import { extractGroupEntities, extractIfrsGroupEntities } from "./annual-report.notes-extraction.js";
+import { dividendsInEquityOf } from "./annual-report.dividends.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
+
+/** The ÅRL statement of changes in equity: one column per member of this dimension. */
+const EQUITY_CLASS_DIMENSION = "ClassesOfEquityDimension";
+/** The column "Ekstraordinært udbytte indregnet under egenkapitalen". */
+const EXTRAORDINARY_DIVIDEND_EQUITY_CLASS = "ProposedExtraordinaryDividendRecognisedInEquityMember";
+/** Columns that repeat the amounts of other columns and must not be added to them. */
+const AGGREGATE_EQUITY_CLASSES = new Set(["AllClassesOfEquityMember", "EquityAttributableToParentMember"]);
 
 /**
  * Namespaces whose URI carries a version date, matched by pattern instead of
@@ -638,6 +646,76 @@ export default class XBRLDocument {
     }
 
     /**
+     * The extraordinary dividend paid during the period ending on `date`, read
+     * off the ÅRL statement of changes in equity, where it is a movement in the
+     * equity classes (columns) rather than a balance sheet item:
+     *
+     *  1. the line "Betalt ekstraordinært udbytte" (ExtraordinaryDividendPaid):
+     *     its total when tagged without an equity class, otherwise the sum of
+     *     its columns, leaving out the columns that repeat other columns;
+     *  2. failing that, what was paid out of the dedicated column "Ekstraordinært
+     *     udbytte indregnet under egenkapitalen", tagged as DividendPaid or
+     *     Dividend there.
+     *
+     * Filers disagree on the sign of the same outflow, so the amount is returned
+     * positive. The first source with a non-zero amount wins; a tagged zero is
+     * returned as zero, and null means the filing says nothing about it.
+     */
+    private extraordinaryDividendPaid(date: string, scope: "solo" | "consolidated") {
+        const fact = ÅRL_TAXONOMY.body.notes.extraordinaryDividendPaid;
+        const scopeDimension = this.scopeModel.dimension;
+        type Entry = { record: NonNullable<XBRLRecord>[number]; equityClass: string | null };
+
+        // One equity-statement line's amounts for the period and scope, each with
+        // the column it sits in (null = no column, the line's total).
+        const line = (name: string): Entry[] =>
+            (this.extractTaxonomyField({ ...fact, name }) ?? []).flatMap((record): Entry[] => {
+                const context = record.context;
+                if (!context || context.endDate !== date) return [];
+                if (this.isConsolidatedContext(context) !== (scope === "consolidated")) return [];
+                if (XBRLDocument.parseAmount(record.value) === null) return [];
+
+                const columns = context.dimensions.filter((d) => d.dimension !== scopeDimension);
+                if (columns.length === 0) return [{ record, equityClass: null }];
+                if (columns.length > 1 || columns[0].dimension !== EQUITY_CLASS_DIMENSION) return [];
+                return [{ record, equityClass: columns[0].member }];
+            });
+
+        const amountOf = (entries: Entry[]) => {
+            if (entries.length === 0) return null;
+            const best = this.mostPreciseRecord(entries.map((entry) => entry.record));
+            return { ...this.toAccount(best), label: fact.label };
+        };
+
+        const paid = line(fact.name);
+        const total = amountOf(paid.filter((entry) => entry.equityClass === null));
+
+        const perColumn = new Map<string, Entry[]>();
+        for (const entry of paid) {
+            if (entry.equityClass === null || AGGREGATE_EQUITY_CLASSES.has(entry.equityClass)) continue;
+            perColumn.set(entry.equityClass, [...(perColumn.get(entry.equityClass) ?? []), entry]);
+        }
+        const columnAmounts = [...perColumn.values()].map(amountOf).filter((amount) => amount !== null);
+        const columnSum =
+            columnAmounts.length > 0
+                ? {
+                      ...columnAmounts[0],
+                      value: columnAmounts
+                          .filter((amount) => amount.unit === columnAmounts[0].unit)
+                          .reduce((sum, amount) => sum + (amount.value ?? 0), 0),
+                  }
+                : null;
+
+        const fromDedicatedColumn = ["DividendPaid", "Dividend"].map((name) =>
+            amountOf(line(name).filter((entry) => entry.equityClass === EXTRAORDINARY_DIVIDEND_EQUITY_CLASS)),
+        );
+
+        const candidates = [total ?? columnSum, ...fromDedicatedColumn].filter((amount) => amount !== null);
+        const chosen = candidates.find((amount) => amount.value !== 0) ?? candidates[0];
+        return chosen ? { ...chosen, value: Math.abs(chosen.value ?? 0) } : null;
+    }
+
+    /**
      * Builds a stable key from a context's dimension members (ignoring the period),
      * so that facts about the same entity are grouped together even when they live
      * in different contexts — e.g. an entity's name in a duration context and its
@@ -891,7 +969,42 @@ export default class XBRLDocument {
             return result;
         };
 
-        const notes = buildStatement(notesRecords, "notes", true) as unknown as Notes<Account>;
+        // The paid extraordinary dividend is a movement in the statement of changes
+        // in equity, spread over equity classes; it has its own reader instead of
+        // the generic note path, which would add subtotal columns to their parts.
+        const { extraordinaryDividendPaid: _equityStatementLine, ...genericNotesRecords } = notesRecords;
+        const buildNotes = (statement: StatementName, scope: "solo" | "consolidated"): Record<string, Account> => {
+            const result = buildStatement(genericNotesRecords, statement, true, reportingPeriod.reportingPeriodEndDate, scope);
+            const paid = isIfrs ? null : this.extraordinaryDividendPaid(reportingPeriod.reportingPeriodEndDate, scope);
+            if (paid) {
+                const { account, repair } = this.repairScaling(paid);
+                if (repair) repairedFields.push({ statement, field: "extraordinaryDividendPaid", ...repair });
+                result.extraordinaryDividendPaid = account as Account;
+            }
+
+            // The dividend distributed after the balance sheet date: the total, or
+            // else the individual distributions (one per typed member) added up.
+            const afterYearEnd = "extraordinaryDividendDistributedAfterEndOfReportingPeriod";
+            if (!isIfrs && !result[afterYearEnd]?.value) {
+                const distributions = this.createAccountFromXBRLRecord(
+                    this.extractTaxonomyField({
+                        ...ÅRL_TAXONOMY.body.notes[afterYearEnd],
+                        name: "ExtraordinaryDividendDistributedAfterEndOfReportingPeriod",
+                    }),
+                    reportingPeriod.reportingPeriodEndDate,
+                    true,
+                    scope,
+                );
+                if (distributions?.value) {
+                    const { account, repair } = this.repairScaling(distributions);
+                    if (repair) repairedFields.push({ statement, field: afterYearEnd, ...repair });
+                    result[afterYearEnd] = account as Account;
+                }
+            }
+            return result;
+        };
+
+        const notes = buildNotes("notes", "solo") as unknown as Notes<Account>;
         const balanceSheet = buildStatement(balanceSheetRecords, "balanceSheet", false) as unknown as BalanceSheet<Account>;
         const incomeStatement = buildStatement(incomeStatementRecords, "incomeStatement", false) as unknown as IncomeStatement<Account>;
 
@@ -912,13 +1025,7 @@ export default class XBRLDocument {
             reportingPeriod.reportingPeriodEndDate,
             "consolidated",
         );
-        const consolidatedNotes = buildStatement(
-            notesRecords,
-            "consolidatedNotes",
-            true,
-            reportingPeriod.reportingPeriodEndDate,
-            "consolidated",
-        );
+        const consolidatedNotes = buildNotes("consolidatedNotes", "consolidated");
         const hasConsolidated =
             Object.keys(consolidatedBalanceSheet).length > 0 ||
             Object.keys(consolidatedIncomeStatement).length > 0 ||
@@ -1024,8 +1131,7 @@ export default class XBRLDocument {
             Object.values(consolidated?.balancesheet ?? {}).find((account) => account?.unit)?.unit ||
             null;
 
-        return {
-            report: {
+        const report: AnnualReport<Account> = {
                 reportingPeriod,
                 standard: standard ?? "ÅRL",
                 scope,
@@ -1034,6 +1140,8 @@ export default class XBRLDocument {
                 incomeStatement,
                 balancesheet: balanceSheet,
                 notes,
+                // Filled just below, from the finished statements.
+                dividendsInEquity: null,
                 groupEntitiesFromNotes,
                 consolidatedFinancialStatements,
                 consolidated,
@@ -1042,8 +1150,9 @@ export default class XBRLDocument {
                 // company's full report list is assembled — some checks are
                 // cross-year and need every report.
                 validation: [],
-            },
-            priorFigures,
         };
+        report.dividendsInEquity = dividendsInEquityOf(report);
+
+        return { report, priorFigures };
     }
 }

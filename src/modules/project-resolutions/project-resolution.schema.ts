@@ -195,6 +195,8 @@ const adjustedEquitySchema = z.object({
     landAndBuildings: z.number().nullable(),
     sharesInSubsidiaries: z.array(componentSchema),
     proposedDividends: accountValueSchema.nullable(),
+    extraordinaryDividends: accountValueSchema.nullable(),
+    dividendsAfterBalanceSheetDate: accountValueSchema.nullable(),
 });
 
 const capitalisedEarningsSchema = z.object({

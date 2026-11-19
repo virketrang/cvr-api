@@ -318,6 +318,12 @@ export interface AnnualReport<T> {
     incomeStatement: IncomeStatement<T>;
     notes: Notes<T>;
     /**
+     * The company's own declared dividends and how much of each is in the equity
+     * on its balance sheet. Null when the filing has no ÅRL figures for the
+     * company itself (IFRS statements do not carry these items).
+     */
+    dividendsInEquity: DividendsInEquity | null;
+    /**
      * Companies mentioned in this report as (potentially) part of the corporate
      * group — the taxonomy's structured related-entity facts merged with entities
      * parsed from note tables/text, incl. foreign members invisible to the CVR
@@ -406,6 +412,57 @@ export interface Notes<T> {
     accumulatedImpairmentLossesAndAmortisationOfIntangibleAssets: T;
     /** Unit "pure": the number of employees, not an amount. */
     averageNumberOfEmployees: T;
+    /**
+     * Extraordinary dividend paid during the year, read off the statement of
+     * changes in equity and always positive. A movement, not a closing balance:
+     * it is no longer part of equity at the balance sheet date, unlike
+     * balancesheet.proposedExtraordinaryDividendRecognisedInEquity.
+     */
+    extraordinaryDividendPaid: T;
+    /**
+     * Extraordinary dividend distributed after the balance sheet date, disclosed
+     * with the proposed distribution of results. It had not left the company at
+     * the balance sheet date, so it is still part of the equity reported there.
+     */
+    extraordinaryDividendDistributedAfterEndOfReportingPeriod: T;
+}
+
+/**
+ * Whether a dividend is part of the equity on the balance sheet:
+ *  - "inEquity": the reported equity only adds up with the amount in it;
+ *  - "notInEquity": it only adds up without it (already paid, or carried as debt);
+ *  - "undetermined": the equity items tagged in the filing cannot tell;
+ *  - "sameAsAnother": the amount is one of the other two dividends, counted there.
+ */
+export type DividendEquityStatus = "inEquity" | "notInEquity" | "undetermined" | "sameAsAnother";
+
+export interface DividendInEquity {
+    /**
+     * The part of the dividend that is in the reported equity and therefore
+     * leaves it after the balance sheet date: the reported amount or 0.
+     */
+    value: number;
+    /** The amount as tagged in the filing. */
+    reported: number;
+    status: DividendEquityStatus;
+    label: string;
+    /** What the reader should check, in Danish, when the status calls for it. */
+    note: string | null;
+}
+
+/**
+ * The dividends a company has declared, each with the part of it that sits in
+ * the equity reported at the balance sheet date. The three `value`s are what a
+ * valuation based on that equity deducts for distributions made afterwards.
+ * A dividend the filing does not report is null.
+ */
+export interface DividendsInEquity {
+    /** Foreslået udbytte indregnet under egenkapitalen (the ordinary dividend). */
+    proposedDividend: DividendInEquity | null;
+    /** Ekstraordinært udbytte indregnet under egenkapitalen. */
+    extraordinaryDividend: DividendInEquity | null;
+    /** Ekstraordinært udbytte udloddet efter regnskabsårets udløb. */
+    extraordinaryDividendAfterBalanceSheetDate: DividendInEquity | null;
 }
 
 export interface InformationOnRelatedEntities<T> {

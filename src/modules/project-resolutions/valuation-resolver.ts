@@ -1,4 +1,5 @@
-import type { Account, AnnualReport } from "../annual-reports/annual-report.types.js";
+import type { Account, AnnualReport, DividendsInEquity } from "../annual-reports/annual-report.types.js";
+import { dividendsInEquityOf } from "../annual-reports/annual-report.dividends.js";
 import { components, getAccount, selectAccount, selectWithFallback } from "./account.js";
 import type { TaxonomyIndex } from "./taxonomy-engine.js";
 import { formatDanishInteger } from "../../utils/format-number.js";
@@ -122,7 +123,7 @@ export function resolveValuation(
 
         let adjustedEquity: AdjustedEquity | null = null;
         if (includeAdjustedEquity(ctx.mode, slot)) {
-            const result = resolveAdjustedEquity(balancesheet, slot, fairValueProperty, ctx, notes);
+            const result = resolveAdjustedEquity(balancesheet, slot, fairValueProperty, ctx, notes, dividendsInEquityOf(report));
             adjustedEquity = result.adjustedEquity;
             if (result.property) property = result.property;
             // The property row only becomes visible when the block was created for
@@ -187,6 +188,7 @@ function resolveAdjustedEquity(
     fairValueProperty: number,
     ctx: ResolutionContext,
     notes: NoteCollector,
+    dividends: DividendsInEquity | null,
 ): { adjustedEquity: AdjustedEquity; property: ResolvedProperty | null } {
     const landAndBuildings = getAccount(balancesheet, "landAndBuildings");
     const land = getAccount(balancesheet, "land");
@@ -240,7 +242,33 @@ function resolveAdjustedEquity(
         );
     }
 
-    const proposedDividends = ctx.isParent ? selectAccount(balancesheet, "proposedDividendRecognisedInEquity") : null;
+    // Dividends distributed after the balance sheet date are deducted from the
+    // book equity — for the parent only, and only the part that is in that equity
+    // (see resolveDividendsInEquity). A dividend the report does not declare keeps
+    // the plain reading of the balance sheet line.
+    let proposedDividends: AccountValue | null = null;
+    let extraordinaryDividends: AccountValue | null = null;
+    let dividendsAfterBalanceSheetDate: AccountValue | null = null;
+    if (ctx.isParent) {
+        const { proposedDividend, extraordinaryDividend, extraordinaryDividendAfterBalanceSheetDate } = dividends ?? {};
+
+        proposedDividends = proposedDividend
+            ? { concept: "proposedDividendRecognisedInEquity", value: proposedDividend.value }
+            : selectAccount(balancesheet, "proposedDividendRecognisedInEquity");
+        if (extraordinaryDividend?.value) {
+            extraordinaryDividends = { concept: "proposedExtraordinaryDividendRecognisedInEquity", value: extraordinaryDividend.value };
+        }
+        if (extraordinaryDividendAfterBalanceSheetDate?.value) {
+            dividendsAfterBalanceSheetDate = {
+                concept: "extraordinaryDividendDistributedAfterEndOfReportingPeriod",
+                value: extraordinaryDividendAfterBalanceSheetDate.value,
+            };
+        }
+
+        for (const dividend of [proposedDividend, extraordinaryDividend, extraordinaryDividendAfterBalanceSheetDate]) {
+            if (dividend?.note) notes.add("VALUATION", "DOSMERSEDDEL", `${notePrefix(slot)}${dividend.note}`);
+        }
+    }
 
     return {
         adjustedEquity: {
@@ -249,6 +277,8 @@ function resolveAdjustedEquity(
             landAndBuildings: totalPropertyBookValue !== 0 ? totalPropertyBookValue : null,
             sharesInSubsidiaries,
             proposedDividends,
+            extraordinaryDividends,
+            dividendsAfterBalanceSheetDate,
         },
         property,
     };

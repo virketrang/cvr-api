@@ -28,6 +28,7 @@ function report(
         balancesheet: container(values.balancesheet ?? {}) as never,
         incomeStatement: container(values.incomeStatement ?? {}) as never,
         notes: container(values.notes ?? {}) as never,
+        dividendsInEquity: null,
         groupEntitiesFromNotes: [],
         consolidatedFinancialStatements: [],
         consolidated: null,
@@ -164,6 +165,35 @@ describe("resolveValuation — adjusted equity", () => {
             context({ isParent: false, companyIndex: 2 }),
         );
         assert.equal(asSubsidiary.years[0].adjustedEquity?.proposedDividends, null);
+    });
+
+    it("deducts each dividend only as far as it is in the book equity", () => {
+        // Proposed dividend in equity; an extraordinary dividend already paid during
+        // the year (equity adds up without it); and one distributed after year end.
+        const resolved = resolveValuation(
+            [
+                report(2025, {
+                    balancesheet: {
+                        equity: 1_500_000,
+                        contributedCapital: 500_000,
+                        retainedEarnings: 800_000,
+                        proposedDividendRecognisedInEquity: 200_000,
+                        proposedExtraordinaryDividendRecognisedInEquity: 300_000,
+                    },
+                    notes: { extraordinaryDividendDistributedAfterEndOfReportingPeriod: 150_000 },
+                }),
+            ],
+            context({ isParent: true }),
+        );
+        const adjustedEquity = resolved.years[0].adjustedEquity;
+
+        assert.deepEqual(adjustedEquity?.proposedDividends, { concept: "proposedDividendRecognisedInEquity", value: 200_000 });
+        assert.equal(adjustedEquity?.extraordinaryDividends, null);
+        assert.deepEqual(adjustedEquity?.dividendsAfterBalanceSheetDate, {
+            concept: "extraordinaryDividendDistributedAfterEndOfReportingPeriod",
+            value: 150_000,
+        });
+        assert.ok(resolved.notes.some((note) => note.notepad === "DOSMERSEDDEL" && /150\.000 er udloddet efter regnskabsårets udløb/.test(note.text)));
     });
 
     it("flags subsidiaries with under 20% voting rights when participating interests exist", () => {

@@ -124,6 +124,24 @@ describe("XBRLDocument.getStandard", () => {
         });
         assert.equal(new XBRLDocument(parentAarlInstance).getStandard().generalDataOnly, false);
     });
+
+    it("accepts the four ÅRL 2026-10-01 entry points", () => {
+        const layouts = [
+            "BalanceSheetAccountFormIncomeStatementByNature",
+            "BalanceSheetAccountFormIncomeStatementByFunction",
+            "BalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByNature",
+            "BalanceSheetAccountByCurrentAndLongTermFormIncomeStatementByFunction",
+        ];
+        for (const layout of layouts) {
+            const instance = parentAarlInstance.replace(
+                /taxonomy\/20241001\/entryDanishGAAP\w+20241001\.xsd/,
+                `taxonomy/20261001/entryDanishGAAP${layout}IncludingManagementsReviewStatisticsAndTax20261001.xsd`,
+            );
+            const info = new XBRLDocument(instance).getStandard();
+            assert.equal(info.standard, "ÅRL", layout);
+            assert.equal(info.generalDataOnly, false, layout);
+        }
+    });
 });
 
 describe("ESEF extraction", () => {
