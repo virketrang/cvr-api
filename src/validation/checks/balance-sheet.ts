@@ -1,4 +1,5 @@
-import { conceptTree, residualOf } from "../concept-tree.js";
+import { conceptTree, residualOf, subtreeConcepts } from "../concept-tree.js";
+import { explainDeviation, unmappedFactsOf, type UnmappedFact } from "../../modules/annual-reports/annual-report.unmapped.js";
 import { formatKr, periodOf } from "../format.js";
 import { withinTolerance } from "../tolerance.js";
 import type { AccountSection, Check, ReportContext, ValidationFinding } from "../types.js";
@@ -49,19 +50,52 @@ function residualFinding(
     if (!residual) return null;
 
     const deviation = residual.actual - residual.expected;
+    const explanation = explanationOf(ctx, concept, deviation);
     return {
         id,
         severity: "error",
         message:
             (intro ?? `Sammentælling af ${danishName(concept)}`) +
-            ` afviger ${formatKr(Math.abs(deviation))} fra summen af indberettede underposter ` +
-            `(${residual.childConcepts.join(", ")}). Muligvis manglende underpost i udtrækket.`,
+            ` afviger ${amountText(Math.abs(deviation), ctx)} fra summen af indberettede underposter ` +
+            `(${residual.childConcepts.join(", ")}). ` +
+            (explanation ?? "Muligvis manglende underpost i udtrækket."),
         expected: residual.expected,
         actual: residual.actual,
         deviation,
         concepts: [concept, ...residual.childConcepts],
         period: periodOf(ctx.report),
     };
+}
+
+const ASSET_SIDE = subtreeConcepts("assets");
+
+/** An amount in the report's currency: "54.008.000 kr." for DKK, "54.008.000 EUR" otherwise. */
+function amountText(amount: number, ctx: ReportContext): string {
+    const unit = ctx.report.unit;
+    return !unit || unit === "DKK" ? formatKr(amount) : formatKr(amount).replace(/ kr\.$/, ` ${unit}`);
+}
+
+/**
+ * Names the amounts that make up a deviation, when the filing tags them with
+ * elements the mapping does not read (a company's own extension, or a standard
+ * element without a field) and exactly one combination of them adds up to the
+ * deviation. The amounts are only named here; they never enter the figures.
+ */
+function explanationOf(ctx: ReportContext, concept: string, deviation: number): string | null {
+    const side = ASSET_SIDE.has(concept) ? "debit" : "credit";
+    const facts = explainDeviation(unmappedFactsOf(ctx.report), side, (sum) => withinTolerance(deviation, sum, ctx.unit));
+    if (!facts) return null;
+
+    const describe = (fact: UnmappedFact) =>
+        `${fact.label ? `"${fact.label}"` : fact.concept} (${fact.extension ? "selskabets egen post" : "taksonomiens post"}, ` +
+        `${fact.concept}) ${amountText(fact.value, ctx)}`;
+    const total = facts.reduce((sum, fact) => sum + fact.value, 0);
+    return (
+        `Forskellen svarer til ${facts.length === 1 ? "en post" : `${facts.length} poster`} i årsrapporten, ` +
+        `som ikke kan henføres sikkert til en post i udtrækket og derfor ikke indgår i tallene: ` +
+        facts.map(describe).join("; ") +
+        (facts.length > 1 ? `. I alt ${amountText(total, ctx)}` : "")
+    ).replace(/([^.])$/, "$1.");
 }
 
 /** BAL-001: aktiver == passiver. */
@@ -98,7 +132,6 @@ const bal001: Check = {
 const bal002: Check = {
     id: "BAL-002",
     scope: "report",
-    standards: ["ÅRL"],
     run(ctx) {
         const section = balanceSection(ctx);
         if (val(section, "nonCurrentAssets") === undefined || val(section, "currentAssets") === undefined) return [];
@@ -111,7 +144,6 @@ const bal002: Check = {
 const bal003: Check = {
     id: "BAL-003",
     scope: "report",
-    standards: ["ÅRL"],
     run(ctx) {
         const finding = residualFinding("BAL-003", ctx, "nonCurrentAssets", "Sammentælling af anlægsaktiver");
         return finding ? [finding] : [];

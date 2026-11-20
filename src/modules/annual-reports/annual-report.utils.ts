@@ -25,9 +25,57 @@ import IFRS_TAXONOMY from "./annual-report.taxonomy.ifrs.js";
 import { extractGroupEntities, extractIfrsGroupEntities } from "./annual-report.notes-extraction.js";
 import { dividendsInEquityOf } from "./annual-report.dividends.js";
 import { investmentPropertyAtFairValue } from "./annual-report.property.js";
+import { setUnmappedFacts, standardBalanceSheetConcept, type UnmappedFact } from "./annual-report.unmapped.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
+
+/** Concepts read by ifrsDkNoncurrentComposites besides the generic IFRS mapping. */
+const IFRS_DK_COMPOSITE_CONCEPTS = [
+    "ifrs-dk:NoncurrentReceivablesFromSubsidaries",
+    "ifrs-dk:NoncurrentReceivablesFromAssociates",
+    "ifrs-dk:NoncurrentReceivablesFromJointVentures",
+    "ifrs-dk:NoncurrentSubordinatedLoans",
+    "ifrs-full:NoncurrentReceivablesDueFromRelatedParties",
+    "ifrs-full:OtherNoncurrentReceivables",
+    "ifrs-full:NoncurrentTradeReceivables",
+    "ifrs-full:NoncurrentInvestmentsOtherThanInvestmentsAccountedForUsingEquityMethod",
+    "ifrs-full:OtherNoncurrentFinancialAssets",
+    "ifrs-dk:NoncurrentInvestments",
+    "ifrs-dk:OtherNoncurrentInvestments",
+];
+
+/** Namespaces of the standard taxonomies, as "fsa" / "ifrs-full" / "ifrs-dk", or "other-standard" for the rest. */
+function standardPrefixOf(namespace: string): string | null {
+    if (namespace === "http://xbrl.dcca.dk/fsa") return "fsa";
+    if (/^https?:\/\/xbrl\.ifrs\.org\/taxonomy\/\d{4}-\d{2}-\d{2}\/ifrs(-full)?$/.test(namespace)) return "ifrs-full";
+    if (/^https?:\/\/xbrl\.dcca\.dk\/ifrs-dk-cor_\d{4}-\d{2}-\d{2}$/.test(namespace)) return "ifrs-dk";
+    if (/^https?:\/\/(xbrl\.dcca\.dk|www\.xbrl\.org|xbrl\.org|www\.esma\.europa\.eu|xbrl\.ifrs\.org|www\.iso\.org|standards\.iso\.org)\//.test(namespace)) {
+        return "other-standard";
+    }
+    return null;
+}
+
+/** Every concept a mapping reads, as "fsa:X" / "ifrs-full:X" / "ifrs-dk:X". */
+function mappedConcepts(isIfrs: boolean): Set<string> {
+    const out = new Set<string>(isIfrs ? IFRS_DK_COMPOSITE_CONCEPTS : []);
+    const visit = (node: unknown): void => {
+        if (Array.isArray(node)) return node.forEach(visit);
+        if (!node || typeof node !== "object") return;
+        const fact = node as Partial<TaxonomyFact>;
+        if (typeof fact.name === "string" && typeof fact.namespace === "string") {
+            const prefix = fact.namespace === "http://xbrl.dcca.dk/fsa" ? "fsa" : fact.namespace;
+            out.add(`${prefix}:${fact.name}`);
+            return;
+        }
+        Object.values(node).forEach(visit);
+    };
+    visit(isIfrs ? IFRS_TAXONOMY.body : ÅRL_TAXONOMY.body);
+    return out;
+}
+
+/** An amount as the statement builder handles it, before scaling repair. */
+type CompositeAccount = { value: number | null; unit: string | null; label: string; decimals: number | null };
 
 /** The ÅRL statement of changes in equity: one column per member of this dimension. */
 const EQUITY_CLASS_DIMENSION = "ClassesOfEquityDimension";
@@ -717,6 +765,156 @@ export default class XBRLDocument {
     }
 
     /**
+     * The balance sheet amounts at `date` in `scope` that the mapping does not
+     * read: standard elements the taxonomies place in the balance sheet but no
+     * field uses, and the filer's own extension elements (their label and side
+     * come later from the extension package; see annual-report.unmapped.ts).
+     * Only undimensioned facts count, as for the statements themselves.
+     */
+    public unmappedBalanceFacts(date: string, scope: "solo" | "consolidated", isIfrs: boolean): UnmappedFact[] {
+        const known = mappedConcepts(isIfrs);
+        const contexts = this.getContext();
+        const units = this.getUnits();
+        const byConcept = new Map<string, UnmappedFact & { decimals: number | null }>();
+
+        for (const element of this.elements) {
+            const unitRef = element.getAttribute("unitRef");
+            const contextRef = element.getAttribute("contextRef");
+            if (!unitRef || !contextRef) continue;
+            const context = contexts[contextRef];
+            if (!context || context.instant !== date || !this.matchesScope(context, scope)) continue;
+
+            const [prefix, name] = element.tagName.includes(":") ? element.tagName.split(":") : ["", element.tagName];
+            const namespace = this.namespaces[prefix] ?? "";
+            const standard = standardPrefixOf(namespace);
+            if (standard === "other-standard") continue;
+
+            let label: string | null = null;
+            let balance: "debit" | "credit" | null = null;
+            if (standard) {
+                const qname = `${standard}:${name}`;
+                if (known.has(qname)) continue;
+                const concept = standardBalanceSheetConcept(qname);
+                if (!concept) continue;
+                label = concept.label;
+                balance = concept.balance;
+            }
+
+            const value = XBRLDocument.parseAmount(element.textContent ?? null);
+            if (value === null) continue;
+            const decimalsText = element.getAttribute("decimals");
+            const decimals = decimalsText !== null && Number.isFinite(parseInt(decimalsText, 10)) ? parseInt(decimalsText, 10) : null;
+            const concept = standard ? `${standard}:${name}` : element.tagName;
+
+            const existing = byConcept.get(concept);
+            if (existing && (existing.decimals ?? -Infinity) >= (decimals ?? -Infinity)) continue;
+            byConcept.set(concept, {
+                concept,
+                namespace,
+                name,
+                extension: standard === null,
+                value,
+                unit: units[unitRef] ? this.removeNamespacePrefix(units[unitRef]) : null,
+                label,
+                balance,
+                decimals,
+            });
+        }
+
+        return [...byConcept.values()].map(({ decimals: _decimals, ...fact }) => fact);
+    }
+
+    /**
+     * Non-current receivables and investments in an IFRS-DK balance sheet that
+     * the one-concept-per-field mapping cannot express, because the field is
+     * made up of several concepts or because a concept means a total in one
+     * filing and a part in another. Returns the fields to set; a field is left
+     * out when none of its concepts is tagged, so the generic mapping stands.
+     *
+     *  - longtermReceivablesFromGroupEnterprises. IFRS-DK breaks receivables
+     *    from related parties down into subsidiaries, associates, joint
+     *    ventures and subordinated loans, with ifrs-full's
+     *    NoncurrentReceivablesDueFromRelatedParties as the branch total. Some
+     *    filers tag that concept as a separate line beside the parts instead
+     *    (CVR 18351331, 2016-2019). Which of the two a filing does follows from
+     *    the amounts: a total is never smaller than its parts. As a total, its
+     *    associates and joint ventures have fields of their own and are taken
+     *    out; as a separate line, it is added to the subsidiaries. Either way
+     *    the remaining related parties stay where the generic mapping already
+     *    puts them.
+     *  - otherLongtermReceivables: other receivables plus non-current trade
+     *    receivables, which ÅRL has no line for; in its balance sheet format
+     *    they are "Andre tilgodehavender" under the financial fixed assets.
+     *  - otherLongtermInvestments: securities (ifrs-dk:NoncurrentInvestments)
+     *    plus the "other non-current financial assets" branch, i.e. its total
+     *    or, without one, ifrs-dk:OtherNoncurrentInvestments. When the broad
+     *    ifrs-full total NoncurrentInvestmentsOtherThanInvestmentsAccounted-
+     *    ForUsingEquityMethod is tagged, the generic mapping already uses it.
+     */
+    private ifrsDkNoncurrentComposites(date: string, scope: "solo" | "consolidated"): Record<string, CompositeAccount> {
+        const amount = (name: string, namespace: "ifrs-dk" | "ifrs-full") =>
+            this.createAccountFromXBRLRecord(this.extractTaxonomyField({ name, namespace, label: "" }), date, false, scope);
+        const labelOf = (key: string) =>
+            (ÅRL_TAXONOMY.body.balanceSheet as unknown as Record<string, TaxonomyFact>)[key]?.label ?? key;
+        const sumOf = (key: string, parts: Array<ReturnType<typeof amount>>): CompositeAccount | null => {
+            const tagged = parts.filter((part) => part !== null && part.value !== null);
+            if (tagged.length === 0) return null;
+            return {
+                value: tagged.reduce((sum, part) => sum + (part!.value ?? 0), 0),
+                unit: tagged[0]!.unit,
+                label: labelOf(key),
+                decimals: tagged.reduce<number | null>(
+                    (lowest, part) => (part!.decimals === null ? lowest : lowest === null ? part!.decimals : Math.min(lowest, part!.decimals)),
+                    null,
+                ),
+            };
+        };
+        const result: Record<string, CompositeAccount> = {};
+
+        // Receivables from group enterprises.
+        const subsidiaries = amount("NoncurrentReceivablesFromSubsidaries", "ifrs-dk");
+        const associates = amount("NoncurrentReceivablesFromAssociates", "ifrs-dk");
+        const jointVentures = amount("NoncurrentReceivablesFromJointVentures", "ifrs-dk");
+        const subordinated = amount("NoncurrentSubordinatedLoans", "ifrs-dk");
+        const relatedParties = amount("NoncurrentReceivablesDueFromRelatedParties", "ifrs-full");
+        const parts = [subsidiaries, associates, jointVentures, subordinated].filter((part) => part !== null && part.value !== null);
+        const partsTotal = parts.reduce((sum, part) => sum + (part!.value ?? 0), 0);
+        if (relatedParties === null || relatedParties.value === null) {
+            const group = sumOf("longtermReceivablesFromGroupEnterprises", [subsidiaries]);
+            if (group) result.longtermReceivablesFromGroupEnterprises = group;
+        } else if (parts.length > 0 && relatedParties.value < partsTotal) {
+            // A line of its own beside the parts.
+            result.longtermReceivablesFromGroupEnterprises = sumOf("longtermReceivablesFromGroupEnterprises", [subsidiaries, relatedParties])!;
+        } else if (associates?.value || jointVentures?.value) {
+            // The branch total: associates and joint ventures have their own fields.
+            result.longtermReceivablesFromGroupEnterprises = {
+                ...sumOf("longtermReceivablesFromGroupEnterprises", [relatedParties])!,
+                value: relatedParties.value - (associates?.value ?? 0) - (jointVentures?.value ?? 0),
+            };
+        }
+
+        // Other receivables, including non-current trade receivables.
+        const otherReceivables = sumOf("otherLongtermReceivables", [
+            amount("OtherNoncurrentReceivables", "ifrs-full"),
+            amount("NoncurrentTradeReceivables", "ifrs-full"),
+        ]);
+        if (otherReceivables) result.otherLongtermReceivables = otherReceivables;
+
+        // Other investments.
+        const broadTotal = amount("NoncurrentInvestmentsOtherThanInvestmentsAccountedForUsingEquityMethod", "ifrs-full");
+        if (broadTotal === null || broadTotal.value === null) {
+            const otherFinancialAssets = amount("OtherNoncurrentFinancialAssets", "ifrs-full");
+            const otherInvestments = sumOf("otherLongtermInvestments", [
+                amount("NoncurrentInvestments", "ifrs-dk"),
+                otherFinancialAssets?.value != null ? otherFinancialAssets : amount("OtherNoncurrentInvestments", "ifrs-dk"),
+            ]);
+            if (otherInvestments) result.otherLongtermInvestments = otherInvestments;
+        }
+
+        return result;
+    }
+
+    /**
      * Whether the investment property is measured at fair value (see
      * investmentPropertyAtFairValue). Null when the report has no investment
      * property: the workbook reads a true flag as "all property at fair value",
@@ -1000,6 +1198,14 @@ export default class XBRLDocument {
                 result[key] = repaired as Account;
             }
 
+            if (standard === "IFRS-DK" && (statement === "balanceSheet" || statement === "consolidatedBalanceSheet")) {
+                for (const [key, account] of Object.entries(this.ifrsDkNoncurrentComposites(date, scope))) {
+                    const { account: repaired, repair } = this.repairScaling(account);
+                    if (repair) sink.push({ statement, field: key, ...repair });
+                    result[key] = repaired as Account;
+                }
+            }
+
             return result;
         };
 
@@ -1197,6 +1403,9 @@ export default class XBRLDocument {
                 validation: [],
         };
         report.dividendsInEquity = dividendsInEquityOf(report);
+        // Amounts the mapping does not read, kept outside the report: they only
+        // ever serve to explain a total that does not add up (validation).
+        setUnmappedFacts(report, this.unmappedBalanceFacts(reportingPeriod.reportingPeriodEndDate, "solo", isIfrs));
 
         return { report, priorFigures };
     }

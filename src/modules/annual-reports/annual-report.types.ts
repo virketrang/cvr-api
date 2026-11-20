@@ -69,6 +69,12 @@ export interface UnprocessedAnnualReport {
         dokumentType: string;
         xmlText: string;
     }>;
+    /**
+     * The company's extension taxonomy (IFRS_EXTENSION / ESEF_EXTENSION), not
+     * downloaded up front: it is only read to explain a balance that does not
+     * add up. Null when the filing has none.
+     */
+    extensionPackageUrl?: string | null;
 }
 
 export type RecursiveXBRLRecord<T> = {

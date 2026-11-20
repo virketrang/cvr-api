@@ -19,6 +19,17 @@ import type {
 import { extractGroupEntities, extractIfrsGroupEntities, normalizeEntityName } from "./annual-report.notes-extraction.js";
 
 import XBRLDocument from "./annual-report.utils.js";
+import { fetchExtensionPackage } from "./annual-report.extension.js";
+import {
+    applyExtensionPackage,
+    extensionPackageUrlOf,
+    setExtensionPackageUrl,
+    setUnmappedFacts,
+    unmappedFactsOf,
+} from "./annual-report.unmapped.js";
+import { conceptTree, residualOf } from "../../validation/concept-tree.js";
+import { roundingUnitForReport, withinTolerance } from "../../validation/tolerance.js";
+import type { AccountSection } from "../../validation/types.js";
 import { parseDisabledChecks, runValidation, summarize } from "../../validation/registry.js";
 import { ErrorCode, toAppError } from "../../utils/api-error.js";
 import { formatDanishInteger } from "../../utils/format-number.js";
@@ -135,6 +146,10 @@ export default abstract class AnnualReportService {
                         }),
                 );
 
+                const extensionPackage = report.dokumenter.find(
+                    (document) => /_EXTENSION$/.test(document.dokumentType) && document.dokumentMimeType === "application/zip",
+                );
+
                 return {
                     cvrNumber: report.cvrNummer,
                     reportingPeriod: {
@@ -142,6 +157,7 @@ export default abstract class AnnualReportService {
                         endDate: report.regnskab.regnskabsperiode.slutDato,
                     },
                     documents,
+                    extensionPackageUrl: extensionPackage?.dokumentUrl ?? null,
                 };
             }),
         );
@@ -305,6 +321,9 @@ export default abstract class AnnualReportService {
             }));
 
             const assembled = AnnualReportService.assembleFiling(outcomes);
+            if (xmlAnnualReport.extensionPackageUrl) {
+                for (const { report } of assembled.reports) setExtensionPackageUrl(report, xmlAnnualReport.extensionPackageUrl);
+            }
             extracted.push(...assembled.reports);
 
             for (const { document, result } of assembled.skipped) {
@@ -366,6 +385,7 @@ export default abstract class AnnualReportService {
         // cross-year continuity, sign and scale checks). Runs after the full report
         // list is sorted because some checks span years. Never changes any figure,
         // never affects `status`, never blocks the response.
+        await AnnualReportService.readExtensionPackages(annualReports);
         runValidation(annualReports, parseDisabledChecks(process.env.VALIDATION_DISABLED));
 
         return {
@@ -375,6 +395,29 @@ export default abstract class AnnualReportService {
             skipped,
             validationSummary: summarize(annualReports),
         };
+    }
+
+    /**
+     * Reads the company's extension package for every report that has a total
+     * which does not add up and amounts tagged with the company's own elements,
+     * so the validation note can name them (see annual-report.unmapped.ts).
+     * Reports that add up never cause a download. Failures leave the extension
+     * amounts unexplained; they never fail the request.
+     */
+    private static async readExtensionPackages(reports: Array<AnnualReport<Account>>): Promise<void> {
+        await Promise.all(
+            reports.map(async (report) => {
+                if (!unmappedFactsOf(report).some((fact) => fact.extension)) return;
+                const url = extensionPackageUrlOf(report);
+                const section = {
+                    ...(report.incomeStatement as unknown as AccountSection),
+                    ...(report.balancesheet as unknown as AccountSection),
+                };
+                const unit = roundingUnitForReport(report);
+                const unbalanced = Object.keys(conceptTree).some((concept) => residualOf(section, concept, unit, withinTolerance));
+                applyExtensionPackage(report, url && unbalanced ? await fetchExtensionPackage(url) : null);
+            }),
+        );
     }
 
     /**
@@ -457,6 +500,7 @@ export default abstract class AnnualReportService {
             report.dividendsInEquity = parent.report.dividendsInEquity;
             // The parent company is what the workbook values; its own policy decides.
             report.propertiesAtFairValue = parent.report.propertiesAtFairValue ?? report.propertiesAtFairValue;
+            setUnmappedFacts(report, unmappedFactsOf(parent.report));
             report.scope = "both";
             report.soloStandard = "ÅRL";
             report.unit = report.unit || parent.report.unit;

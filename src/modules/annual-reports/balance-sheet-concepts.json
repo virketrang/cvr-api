@@ -1,0 +1,2398 @@
+{
+  "fsa:AcquiredConcessions": {
+    "label": "Erhvervede koncessioner",
+    "balance": "debit"
+  },
+  "fsa:AcquiredIntangibleAssets": {
+    "label": "Erhvervede immaterielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:AcquiredLicences": {
+    "label": "Erhvervede licenser",
+    "balance": "debit"
+  },
+  "fsa:AcquiredOtherSimilarRights": {
+    "label": "Erhvervede lignende rettigheder",
+    "balance": "debit"
+  },
+  "fsa:AcquiredPatents": {
+    "label": "Erhvervede patenter",
+    "balance": "debit"
+  },
+  "fsa:AcquiredTrademarks": {
+    "label": "Erhvervede varemærker",
+    "balance": "debit"
+  },
+  "fsa:ActuarialProfitLossWhichIsAPartOfTheCalculationOfContingentPensions": {
+    "label": "Aktuarmæssige gevinster (tab), som indgår i opgørelsen af pensionsforpligtelsen",
+    "balance": "credit"
+  },
+  "fsa:Assets": {
+    "label": "Aktiver",
+    "balance": "debit"
+  },
+  "fsa:AssetsHeldForSaleInventories": {
+    "label": "Aktiver bestemt for salg, varebeholdning",
+    "balance": "debit"
+  },
+  "fsa:AssetsMeantForSale": {
+    "label": "Aktiver bestemt for salg",
+    "balance": "debit"
+  },
+  "fsa:BiologicalAssets": {
+    "label": "Biologiske aktiver",
+    "balance": "debit"
+  },
+  "fsa:Buildings": {
+    "label": "Bygninger",
+    "balance": "debit"
+  },
+  "fsa:CashAndCashEquivalents": {
+    "label": "Likvide beholdninger",
+    "balance": "debit"
+  },
+  "fsa:CompletedDevelopmentProjects": {
+    "label": "Færdiggjorte udviklingsprojekter",
+    "balance": "debit"
+  },
+  "fsa:ConcessionsOriginatingFromDevelopmentProjects": {
+    "label": "Koncessioner, der stammer fra udviklingsprojekter",
+    "balance": "debit"
+  },
+  "fsa:ContractWorkInProgress": {
+    "label": "Igangværende arbejder for fremmed regning",
+    "balance": "debit"
+  },
+  "fsa:ContributedCapital": {
+    "label": "Registreret kapital mv.",
+    "balance": "credit"
+  },
+  "fsa:ContributedCapitalInArrears": {
+    "label": "Krav på indbetaling af registreret kapital mv. (kortfristet)",
+    "balance": "debit"
+  },
+  "fsa:ContributedCapitalInArrearsLongTerm": {
+    "label": "Krav på indbetaling af registreret kapital mv.(langfristet)",
+    "balance": "debit"
+  },
+  "fsa:ConvertibleProfitYieldingOrDividendYieldingLongtermDebtInstruments": {
+    "label": "Konvertible og udbyttegivende langfristede gældsbreve",
+    "balance": "credit"
+  },
+  "fsa:ConvertibleProfitYieldingOrDividendYieldingShorttermDebtInstruments": {
+    "label": "Konvertible og udbyttegivende kortfristede gældsbreve",
+    "balance": "credit"
+  },
+  "fsa:CostExceedsIncomeForTheFinancialYearLongtermReceivables": {
+    "label": "Underdækning, langfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "fsa:CostExceedsIncomeForTheFinancialYearShorttermReceivables": {
+    "label": "Underdækning, kortfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "fsa:CurrentAssets": {
+    "label": "Kortfristede aktiver",
+    "balance": "debit"
+  },
+  "fsa:CurrentContractAssets": {
+    "label": "Kortfristede kontraktlige aktiver",
+    "balance": "debit"
+  },
+  "fsa:CurrentContractLiabilities": {
+    "label": "Kortfristede kontraktlige forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:CurrentDeferredTaxAssets": {
+    "label": "Udskudte skatteaktiver",
+    "balance": "debit"
+  },
+  "fsa:DeferredIncomeAssets": {
+    "label": "Periodeafgrænsningsposter [aktiver]",
+    "balance": "debit"
+  },
+  "fsa:DeferredTaxLiabilitiesLongterm": {
+    "label": "Udskudt skat, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:DepositsLongtermInvestmentsAndReceivables": {
+    "label": "Deposita [Finansielle anlægsaktiver]",
+    "balance": "debit"
+  },
+  "fsa:DepositsLongtermLiabilitiesOtherThanProvisions": {
+    "label": "Deposita, langfristede gældsforpligtelser",
+    "balance": "credit"
+  },
+  "fsa:DepositsShorttermLiabilitiesOtherThanProvisions": {
+    "label": "Deposita, kortfristede gældsforpligtelser",
+    "balance": "credit"
+  },
+  "fsa:DerivativeFinancialInstrumentsShorttermAssets": {
+    "label": "Afledte finansielle instrumenter [kortfristede aktiver]",
+    "balance": "debit"
+  },
+  "fsa:DevelopmentProjectsInProgress": {
+    "label": "Udviklingsprojekter under udførelse",
+    "balance": "debit"
+  },
+  "fsa:DevelopmentProjectsInProgressAndPrepaymentsForIntangibleAssets": {
+    "label": "Udviklingsprojekter under udførelse og forudbetalinger for immaterielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:Distributions": {
+    "label": "Henlagt til uddelinger",
+    "balance": "credit"
+  },
+  "fsa:Equity": {
+    "label": "Egenkapital",
+    "balance": "credit"
+  },
+  "fsa:EquityAttributableToParent": {
+    "label": "Egenkapital, som kan henføres til modervirksomheden",
+    "balance": "credit"
+  },
+  "fsa:FixturesFittingsToolsAndEquipment": {
+    "label": "Andre anlæg, driftsmateriel og inventar",
+    "balance": "debit"
+  },
+  "fsa:Goodwill": {
+    "label": "Goodwill",
+    "balance": "debit"
+  },
+  "fsa:HedgeFund": {
+    "label": "Sikringsfond",
+    "balance": "credit"
+  },
+  "fsa:HolidayAllowanceLiabilitiesLongterm": {
+    "label": "Feriepengeforpligtelser, langfristede",
+    "balance": "credit"
+  },
+  "fsa:HolidayAllowanceLiabilitiesShortterm": {
+    "label": "Feriepengeforpligtelser, kortfristede",
+    "balance": "credit"
+  },
+  "fsa:IncomeExceedCostForTheFinancialYearLongterm": {
+    "label": "Overdækning (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:IncomeExceedCostForTheFinancialYearShortterm": {
+    "label": "Overdækning (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:IntangibleAssets": {
+    "label": "Immaterielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:Inventories": {
+    "label": "Varebeholdninger",
+    "balance": "debit"
+  },
+  "fsa:InvestmentProperty": {
+    "label": "Investeringsejendomme",
+    "balance": "debit"
+  },
+  "fsa:Land": {
+    "label": "Grunde",
+    "balance": "debit"
+  },
+  "fsa:LandAndBuildings": {
+    "label": "Grunde og bygninger",
+    "balance": "debit"
+  },
+  "fsa:LeaseholdImprovements": {
+    "label": "Indretning af lejede lokaler",
+    "balance": "debit"
+  },
+  "fsa:LiabilitiesAndEquity": {
+    "label": "Passiver",
+    "balance": "credit"
+  },
+  "fsa:LiabilitiesOtherThanProvisions": {
+    "label": "Gældsforpligtelser",
+    "balance": "credit"
+  },
+  "fsa:LiabilitiesRelatedToAssetsMeantForSale": {
+    "label": "Forpligtelser forbundet med aktiver bestemt for salg",
+    "balance": "credit"
+  },
+  "fsa:LiquidationAccount": {
+    "label": "Likvidationskonto",
+    "balance": "credit"
+  },
+  "fsa:Livestock": {
+    "label": "Stambesætning",
+    "balance": "debit"
+  },
+  "fsa:LongtermBillsOfExchangePayable": {
+    "label": "Langfristet vekselgæld",
+    "balance": "credit"
+  },
+  "fsa:LongtermContractWorkInProgressLiabilities": {
+    "label": "Langfristede igangværende arbejder for fremmed regning, forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:LongtermDebtToBanks": {
+    "label": "Langfristet gæld til banker",
+    "balance": "credit"
+  },
+  "fsa:LongtermDebtToCreditInstitutions": {
+    "label": "Langfristet gæld til kreditinstituter",
+    "balance": "credit"
+  },
+  "fsa:LongtermDebtToOtherCreditInstitutions": {
+    "label": "Langfristet gæld til kreditinstitutter i øvrigt",
+    "balance": "credit"
+  },
+  "fsa:LongtermDeferredIncome": {
+    "label": "Periodeafgrænsningsposter (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermDerivativeFinancialInstrumentsLiabilities": {
+    "label": "Langfristede afledte finansielle instrumenter, forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:LongtermEquityLoan": {
+    "label": "Langfristet ansvarlig lånekapital",
+    "balance": "credit"
+  },
+  "fsa:LongtermInvestmentsAndReceivables": {
+    "label": "Finansielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:LongtermInvestmentsInAssociates": {
+    "label": "Kapitalandele i associerede virksomheder (langfristede)",
+    "balance": "debit"
+  },
+  "fsa:LongtermInvestmentsInGroupEnterprises": {
+    "label": "Kapitalandele i tilknyttede virksomheder (langfristede)",
+    "balance": "debit"
+  },
+  "fsa:LongtermInvestmentsInJointVentures": {
+    "label": "Kapitalandele i joint ventures (langfristet)",
+    "balance": "debit"
+  },
+  "fsa:LongtermLeaseCommitments": {
+    "label": "Leasingforpligtelser (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermLiabilitiesOtherThanProvisions": {
+    "label": "Langfristede forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:LongtermMortgageDebt": {
+    "label": "Langfristet gæld til realkreditinstitutter",
+    "balance": "credit"
+  },
+  "fsa:LongtermNegativeGoodwill": {
+    "label": "Negativ goodwill (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:LongtermParticipatingInterests": {
+    "label": "Kapitalinteresser (langfristede)",
+    "balance": "debit"
+  },
+  "fsa:LongtermPayablesToAssociates": {
+    "label": "Gæld til associerede virksomheder (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermPayablesToGroupEnterprises": {
+    "label": "Gæld til tilknyttede virksomheder (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermPayablesToJointVentures": {
+    "label": "Gæld til joint ventures (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:LongtermPayablesToOwnersOtherCompanies": {
+    "label": "Gæld til ejers andre virksomheder (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermPayablesToParticipatingInterests": {
+    "label": "Gæld til kapitalinteresser (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermPayablesToShareholdersAndManagement": {
+    "label": "Langfristet gæld til selskabsdeltagere og ledelse",
+    "balance": "credit"
+  },
+  "fsa:LongtermPrepaymentsOfWorkInProgress": {
+    "label": "Langfristede modtagne forudbetalinger vedrørende igangværende arbejder",
+    "balance": "credit"
+  },
+  "fsa:LongtermPrepaymentsReceivedFromCustomers": {
+    "label": "Modtagne forudbetalinger fra kunder (langfristede)",
+    "balance": "credit"
+  },
+  "fsa:LongtermReceivablesFromAssociates": {
+    "label": "Langfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:LongtermReceivablesFromGroupEnterprises": {
+    "label": "Langfristede tilgodehavender hos tilknyttede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:LongtermReceivablesFromJointVentures": {
+    "label": "Langfristede tilgodehavender hos joint ventures",
+    "balance": "debit"
+  },
+  "fsa:LongtermReceivablesFromOwnersAndManagement": {
+    "label": "Langfristede tilgodehavender hos virksomhedsdeltagere og ledelse",
+    "balance": "debit"
+  },
+  "fsa:LongtermReceivablesFromOwnersOtherCompanies": {
+    "label": "Langfristede tilgodehavender hos ejers andre virksomheder",
+    "balance": "debit"
+  },
+  "fsa:LongtermReceivablesFromParticipatingInterests": {
+    "label": "Langfristede tilgodehavender hos kapitalinteresser",
+    "balance": "debit"
+  },
+  "fsa:LongtermTaxPayables": {
+    "label": "Skyldig skat (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:LongtermTaxPayablesToGroupEnterprises": {
+    "label": "Selskabsskat (skyldig) til tilknyttede virksomheder (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:LongtermTradePayables": {
+    "label": "Leverandører af varer og tjenesteydelser [langfristede]",
+    "balance": "credit"
+  },
+  "fsa:ManufacturedGoodsAndGoodsForResale": {
+    "label": "Fremstillede varer og handelsvarer",
+    "balance": "debit"
+  },
+  "fsa:MinorityInterests": {
+    "label": "Minoritetsinteresser",
+    "balance": "credit"
+  },
+  "fsa:NoncurrentAssets": {
+    "label": "Langfristede aktiver",
+    "balance": "debit"
+  },
+  "fsa:NoncurrentContractAssets": {
+    "label": "Langfristede kontraktlige aktiver",
+    "balance": "debit"
+  },
+  "fsa:NoncurrentContractLiabilities": {
+    "label": "Langfristede kontraktlige forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:NoncurrentDeferredTaxAssets": {
+    "label": "Udskudte skatteaktiver (anlægsaktiver)",
+    "balance": "debit"
+  },
+  "fsa:NotPaidContributedCapital": {
+    "label": "Ikke indbetalt registreret kapital mv.",
+    "balance": "credit"
+  },
+  "fsa:OtherInvestmentAssets": {
+    "label": "Andre investeringsaktiver",
+    "balance": "debit"
+  },
+  "fsa:OtherLongtermDebtRaisedByIssuanceOfBonds": {
+    "label": "Anden langfristet gæld, der er optaget ved udstedelse af obligationer",
+    "balance": "credit"
+  },
+  "fsa:OtherLongtermInvestments": {
+    "label": "Andre værdipapirer og kapitalandele [langfristet]",
+    "balance": "debit"
+  },
+  "fsa:OtherLongtermReceivables": {
+    "label": "Andre (langfristede) tilgodehavender",
+    "balance": "debit"
+  },
+  "fsa:OtherPayablesIncludingTaxPayablesLiabilitiesOtherThanProvisionsLongterm": {
+    "label": "Anden gæld, herunder skyldige skatter mv., gældsforpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:OtherPayablesIncludingTaxPayablesLiabilitiesOtherThanProvisionsShortterm": {
+    "label": "Anden gæld, herunder skyldige skatter mv., gældsforpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:OtherProvisions": {
+    "label": "Andre hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:OtherProvisionsLiabilitiesLongterm": {
+    "label": "Andre hensatte forpligtelser, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:OtherProvisionsLiabilitiesShortterm": {
+    "label": "Andre hensatte forpligtelser, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:OtherReserves": {
+    "label": "Andre reserver",
+    "balance": "credit"
+  },
+  "fsa:OtherShorttermDebtRaisedByIssuanceOfBonds": {
+    "label": "Anden kortfristet gæld, der er optaget ved udstedelse af obligationer",
+    "balance": "credit"
+  },
+  "fsa:OtherShorttermInvestments": {
+    "label": "Andre værdipapirer og kapitalandele [kortfristet]",
+    "balance": "debit"
+  },
+  "fsa:OtherShorttermReceivables": {
+    "label": "Andre tilgodehavender [kortfristede]",
+    "balance": "debit"
+  },
+  "fsa:OtherSimilarRightsOriginatingFromDevelopmentProjects": {
+    "label": "Lignende rettigheder, der stammer fra udviklingsprojekter",
+    "balance": "debit"
+  },
+  "fsa:OtherStatutoryReserves": {
+    "label": "Øvrige lovpligtige reserver",
+    "balance": "credit"
+  },
+  "fsa:PaidContributedCapital": {
+    "label": "Indbetalt registreret kapital mv.",
+    "balance": "credit"
+  },
+  "fsa:PatentsOriginatingFromDevelopmentProjects": {
+    "label": "Patenter, der stammer fra udviklingsprojekter",
+    "balance": "debit"
+  },
+  "fsa:PensionsAndSimilarLiabilitiesLiabilitiesLongterm": {
+    "label": "Pensioner og lignende forpligtelser, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:PensionsAndSimilarLiabilitiesLiabilitiesShortterm": {
+    "label": "Pensioner og lignende forpligtelser, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:Planes": {
+    "label": "Fly",
+    "balance": "debit"
+  },
+  "fsa:PlantAndMachinery": {
+    "label": "Produktionsanlæg og maskiner",
+    "balance": "debit"
+  },
+  "fsa:PrepaymentsForGoods": {
+    "label": "Forudbetalinger for varer",
+    "balance": "debit"
+  },
+  "fsa:PrepaymentsForIntangibleAssets": {
+    "label": "Forudbetalinger for immaterielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:PrepaymentsForPropertyPlantAndEquipment": {
+    "label": "Forudbetalinger for materielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:PropertyHeldForSaleInTheOrdinaryCourseOfBusiness": {
+    "label": "Ejendomme som besiddes med henblik på videresalg i det normale forretningsforløb (Handelsejendomme)",
+    "balance": "debit"
+  },
+  "fsa:PropertyPlantAndEquipment": {
+    "label": "Materielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:PropertyPlantAndEquipmentInProgress": {
+    "label": "Materielle aktiver under udførelse",
+    "balance": "debit"
+  },
+  "fsa:PropertyPlantAndEquipmentInProgressAndPrepaymentsForPropertyPlantAndEquipment": {
+    "label": "Materielle aktiver under udførelse og forudbetalinger for materielle anlægsaktiver",
+    "balance": "debit"
+  },
+  "fsa:ProposedDividend": {
+    "label": "Forslag til ekstraordinært udbytte for regnskabsåret",
+    "balance": "credit"
+  },
+  "fsa:ProposedDividendRecognisedInEquity": {
+    "label": "Foreslået udbytte indregnet under egenkapitalen",
+    "balance": "credit"
+  },
+  "fsa:ProposedExtraordinaryDividendRecognisedInEquity": {
+    "label": "Ekstraordinært udbytte indregnet under egenkapitalen",
+    "balance": "credit"
+  },
+  "fsa:Provisions": {
+    "label": "Hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForDeferredTax": {
+    "label": "Hensættelser til udskudt skat",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForIncomeExceedCostForTheFinancialYear": {
+    "label": "Hensættelser til overdækning",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupAssociates": {
+    "label": "Hensættelser vedrørende kapitalandele i associerede virksomheder",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupAssociatesLiabilitiesLongterm": {
+    "label": "Hensættelser vedrørende kapitalandele i associerede virksomheder, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupAssociatesLiabilitiesShortterm": {
+    "label": "Hensættelser vedrørende kapitalandele i associerede virksomheder, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupEnterprises": {
+    "label": "Hensættelser vedrørende kapitalandele i tilknyttede virksomheder",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupEnterprisesLiabilitiesLongterm": {
+    "label": "Hensættelser vedrørende kapitalandele i tilknyttede virksomheder, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInGroupEnterprisesLiabilitiesShortterm": {
+    "label": "Hensættelser vedrørende kapitalandele i tilknyttede virksomheder, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInJointVentures": {
+    "label": "Hensættelser vedrørende kapitalandele i joint ventures",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInJointVenturesLiabilitiesLongterm": {
+    "label": "Hensættelser vedrørende kapitalandele i joint ventures, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInJointVenturesLiabilitiesShortterm": {
+    "label": "Hensættelser vedrørende kapitalandele i joint ventures, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInParticipatingInterests": {
+    "label": "Hensættelser vedrørende kapitalinteresser",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInParticipatingInterestsLiabilitiesLongterm": {
+    "label": "Hensættelser vedrørende kapitalinteresser, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForInvestmentsInParticipatingInterestsLiabilitiesShortterm": {
+    "label": "Hensættelser vedrørende kapitalinteresser, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForOverfundingForReportingPeriodLiabilitiesLongterm": {
+    "label": "Hensættelser til overdækning, forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForOverfundingForReportingPeriodLiabilitiesShortterm": {
+    "label": "Hensættelser til overdækning, forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:ProvisionsForPensionsAndSimilarLiabilities": {
+    "label": "Hensættelser til pensioner og lignende forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:RawMaterialsAndConsumables": {
+    "label": "Råvarer og hjælpematerialer",
+    "balance": "debit"
+  },
+  "fsa:ReserveAccordingToArticlesOfAssociation": {
+    "label": "Vedtægtsmæssige reserver",
+    "balance": "credit"
+  },
+  "fsa:ReserveForBiologicalAssets": {
+    "label": "Reserve for biologiske aktiver",
+    "balance": "credit"
+  },
+  "fsa:ReserveForCurrentValueAdjustmentsOfCurrencyGains": {
+    "label": "Reserve for dagsværdiregulering af valutakursgevinster (Tab)",
+    "balance": "credit"
+  },
+  "fsa:ReserveForCurrentValueOfHedging": {
+    "label": "Reserve for dagsværdi af sikring",
+    "balance": "credit"
+  },
+  "fsa:ReserveForDevelopmentExpenditure": {
+    "label": "Reserve for udviklingsomkostninger",
+    "balance": "credit"
+  },
+  "fsa:ReserveForEntrepreneurialCompany": {
+    "label": "Reserve for iværksætterselskab",
+    "balance": "credit"
+  },
+  "fsa:ReserveForLoansAndCollaterals": {
+    "label": "Reserve for udlån og sikkerhedsstillelse",
+    "balance": "credit"
+  },
+  "fsa:ReserveForNetRevaluationAccordingToEquityMethod": {
+    "label": "Reserve for nettoopskrivning efter indre værdis metode",
+    "balance": "credit"
+  },
+  "fsa:ReserveForNetRevaluationOfInvestmentAssets": {
+    "label": "Reserve for nettoopskrivning af investeringsaktiver",
+    "balance": "credit"
+  },
+  "fsa:ReserveForUnpaidContributedCapital": {
+    "label": "Reserve for ikke indbetalt registreret kapital og overkurs",
+    "balance": "credit"
+  },
+  "fsa:ReserveFund": {
+    "label": "Reservefond",
+    "balance": "credit"
+  },
+  "fsa:RestOfOtherReserves": {
+    "label": "Øvrige reserver",
+    "balance": "credit"
+  },
+  "fsa:RetainedEarnings": {
+    "label": "Overført resultat",
+    "balance": "credit"
+  },
+  "fsa:RevaluationReserve": {
+    "label": "Reserve for opskrivninger",
+    "balance": "credit"
+  },
+  "fsa:RightofuseAssets": {
+    "label": "Brugsretsaktiver",
+    "balance": "debit"
+  },
+  "fsa:SharePremium": {
+    "label": "Overkurs ved emission",
+    "balance": "credit"
+  },
+  "fsa:Ships": {
+    "label": "Skibe",
+    "balance": "debit"
+  },
+  "fsa:ShortermDerivativeFinancialInstrumentsLiabilities": {
+    "label": "Kortfristede afledte finansielle instrumenter, forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:ShorttermBillsOfExchangePayable": {
+    "label": "Kortfristet vekselgæld",
+    "balance": "credit"
+  },
+  "fsa:ShorttermContractWorkInProgressLiabilities": {
+    "label": "Kortfristede igangværende arbejder for fremmed regning, forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:ShorttermDebtToBanks": {
+    "label": "Kortfristet gæld til banker",
+    "balance": "credit"
+  },
+  "fsa:ShorttermDebtToCreditInstitutions": {
+    "label": "Kortfristet gæld til kreditinstituter",
+    "balance": "credit"
+  },
+  "fsa:ShorttermDebtToOtherCreditInstitutions": {
+    "label": "Kortfristet gæld til kreditinstitutter i øvrigt",
+    "balance": "credit"
+  },
+  "fsa:ShorttermDeferredIncome": {
+    "label": "Kortfristet del af periodeafgrænsningsposter",
+    "balance": "credit"
+  },
+  "fsa:ShorttermEquityLoan": {
+    "label": "Kortfristet ansvarlig lånekapital",
+    "balance": "credit"
+  },
+  "fsa:ShorttermInvestments": {
+    "label": "Værdipapirer og kapitalandele",
+    "balance": "debit"
+  },
+  "fsa:ShorttermInvestmentsInGroupEnterprises": {
+    "label": "Kapitalandele i tilknyttede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:ShorttermLeaseCommitments": {
+    "label": "Leasingforpligtelser (kortfristede)",
+    "balance": "credit"
+  },
+  "fsa:ShorttermLiabilitiesOtherThanProvisions": {
+    "label": "Kortfristede forpligtelser",
+    "balance": "credit"
+  },
+  "fsa:ShorttermMortgageDebt": {
+    "label": "Kortfristet gæld til realkreditinstitutter",
+    "balance": "credit"
+  },
+  "fsa:ShorttermNegativeGoodwill": {
+    "label": "Kortfristet del af negativ goodwill",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPartOfLongtermLiabilitiesOtherThanProvisions": {
+    "label": "Kortfristet del af langfristet gæld",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToAssociates": {
+    "label": "Kortfristede gældsforpligtelser til associerede virksomheder",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToGroupEnterprises": {
+    "label": "Kortfristede gældsforpligtelser til tilknyttede virksomheder",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToJointVentures": {
+    "label": "Kortfristede gældsforpligtelser til joint ventures",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToOwnersOtherCompanies": {
+    "label": "Gæld til ejers andre virksomheder (kortfristede)",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToParticipatingInterest": {
+    "label": "Kortfristede gældsforpligtelser til kapitalinteresser",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPayablesToShareholdersAndManagement": {
+    "label": "Kortfristet gæld til selskabsdeltagere og ledelse",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPrepaymentsOfWorkInProgress": {
+    "label": "Kortfristede modtagne forudbetalinger vedrørende igangværende arbejder",
+    "balance": "credit"
+  },
+  "fsa:ShorttermPrepaymentsReceivedFromCustomers": {
+    "label": "Kortfristede forudbetalinger fra kunder",
+    "balance": "credit"
+  },
+  "fsa:ShorttermReceivables": {
+    "label": "Tilgodehavender",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesDividendsFromAssociates": {
+    "label": "Kortfristede tilgodehavender udbytte hos associerede virksomhed",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesDividendsFromGroupEnterprises": {
+    "label": "Kortfristede tilgodehavender udbytte hos tilknyttet virksomhed",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesDividendsFromJointVentures": {
+    "label": "Kortfristede tilgodehavender udbytte hos joint ventures",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesDividendsFromParticipatingInterests": {
+    "label": "Kortfristede tilgodehavender udbytte hos kapitalinteresser",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromAssociates": {
+    "label": "Kortfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromGroupEnterprises": {
+    "label": "Kortfristede tilgodehavender hos tilknyttede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromJointVentures": {
+    "label": "Kortfristede tilgodehavender hos joint ventures",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromOwnersAndManagement": {
+    "label": "Kortfristede tilgodehavender hos virksomhedsdeltagere og ledelse",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromOwnersOtherCompanies": {
+    "label": "Kortfristede tilgodehavender hos ejers andre virksomheder",
+    "balance": "debit"
+  },
+  "fsa:ShorttermReceivablesFromParticipatingInterests": {
+    "label": "Kortfristede tilgodehavender hos kapitalinteresser",
+    "balance": "debit"
+  },
+  "fsa:ShorttermTaxPayables": {
+    "label": "Kortfristet skyldig skat",
+    "balance": "credit"
+  },
+  "fsa:ShorttermTaxPayablesToGroupEnterprises": {
+    "label": "kortfristet selskabsskat (skyldig) til tilknyttede virksomheder",
+    "balance": "credit"
+  },
+  "fsa:ShorttermTaxReceivables": {
+    "label": "Kortfristet tilgodehavende skat",
+    "balance": "debit"
+  },
+  "fsa:ShorttermTaxReceivablesFromGroupEnterprises": {
+    "label": "Kortfristet tilgodehavende skat hos tilknyttede virksomheder",
+    "balance": "debit"
+  },
+  "fsa:ShorttermTradePayables": {
+    "label": "Leverandører af varer og tjenesteydelser [kortfristede]",
+    "balance": "credit"
+  },
+  "fsa:ShorttermTradeReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit"
+  },
+  "fsa:TimingDifferencesProvisionsEspeciallyUtilities": {
+    "label": "Tidsmæssige forskelle, hensatte forpligtelser (særligt for forsyningsvirksomheder)",
+    "balance": "credit"
+  },
+  "fsa:TimingDifferencesProvisionsEspeciallyUtilitiesLiabilitiesLongterm": {
+    "label": "Tidsmæssige forskelle, hensatte forpligtelser (særligt for forsyningsvirksomheder), forpligtelser (langfristet)",
+    "balance": "credit"
+  },
+  "fsa:TimingDifferencesProvisionsEspeciallyUtilitiesLiabilitiesShortterm": {
+    "label": "Tidsmæssige forskelle, hensatte forpligtelser (særligt for forsyningsvirksomheder), forpligtelser (kortfristet)",
+    "balance": "credit"
+  },
+  "fsa:TimingDifferencesShorttermReceivablesEspeciallyUtilities": {
+    "label": "Tidsmæssige forskelle, tilgodehavender (særligt for forsyningsvirksomheder)",
+    "balance": "debit"
+  },
+  "fsa:TrademarksOriginatingFromDevelopmentProjects": {
+    "label": "Varemærker, der stammer fra udviklingsprojekter",
+    "balance": "debit"
+  },
+  "fsa:TransferredToFromReservesAvailable": {
+    "label": "Disponible reserver",
+    "balance": "credit"
+  },
+  "fsa:VatAndDutiesPayables": {
+    "label": "Skyldig moms og afgifter",
+    "balance": "credit"
+  },
+  "fsa:VatAndDutiesReceivables": {
+    "label": "Tilgodehavender moms og afgifter",
+    "balance": "debit"
+  },
+  "fsa:WorkInProgress": {
+    "label": "Varer under fremstilling",
+    "balance": "debit"
+  },
+  "ifrs-dk:BankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:BondLoans": {
+    "label": "Obligationslån",
+    "balance": "credit"
+  },
+  "ifrs-dk:CompletedDevelopmentProjects": {
+    "label": "Færdiggjorte udviklingsprojekter",
+    "balance": "debit"
+  },
+  "ifrs-dk:ComputerHardware": {
+    "label": "Edb-udstyr",
+    "balance": "debit"
+  },
+  "ifrs-dk:Concessions": {
+    "label": "Koncessioner",
+    "balance": "debit"
+  },
+  "ifrs-dk:ConstructionContracts": {
+    "label": "Entreprise kontrakter",
+    "balance": "debit"
+  },
+  "ifrs-dk:Consumables": {
+    "label": "Hjælpematerialer",
+    "balance": "debit"
+  },
+  "ifrs-dk:Containers": {
+    "label": "Containere",
+    "balance": "debit"
+  },
+  "ifrs-dk:ContractLiabilities": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentBankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentBondLoans": {
+    "label": "Obligationslån",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentContractLiabilities": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentDebentures": {
+    "label": "Obligationslån",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentDepositsAssets": {
+    "label": "Indeståender",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentDepositsInEscrowAccounts": {
+    "label": "Indestående på sikringskonto",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentMortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentPayablesToCreditInstitutions": {
+    "label": "Kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentPayablesToMortgageCreditInstitutions": {
+    "label": "Real kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentPayablesToOtherCreditInstitutions": {
+    "label": "Andre kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentPortionOfNonCurrentPayables": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentPrepaymentsFromCustomers": {
+    "label": "Forudbetalinger fra kunder",
+    "balance": "credit"
+  },
+  "ifrs-dk:CurrentReceivablesFromAssociates": {
+    "label": "Kortfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentReceivablesFromJointVentures": {
+    "label": "Kortfristede tilgodehavender hos joint ventures",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentReceivablesFromServices": {
+    "label": "Kortfristede tilgodehavender fra tjenesteydelser",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentReceivablesFromSubsidaries": {
+    "label": "Kortfristede tilgodehavender hos datterselskaber",
+    "balance": "debit"
+  },
+  "ifrs-dk:CurrentSecurities": {
+    "label": "Værdipapirer",
+    "balance": "debit"
+  },
+  "ifrs-dk:CustomerRelationships": {
+    "label": "Kunderelationer",
+    "balance": "debit"
+  },
+  "ifrs-dk:CustomerrelatedAssets": {
+    "label": "Kunderelaterede aktiver",
+    "balance": "debit"
+  },
+  "ifrs-dk:DepositsLiabilities": {
+    "label": "Deposita",
+    "balance": "credit"
+  },
+  "ifrs-dk:DevelopmentProjects": {
+    "label": "Udviklingsprojekter",
+    "balance": "debit"
+  },
+  "ifrs-dk:DevelopmentProjectsInProgress": {
+    "label": "Udviklingsprojekter under opførelse",
+    "balance": "debit"
+  },
+  "ifrs-dk:DistributionNetwork": {
+    "label": "Distributionsnetværk",
+    "balance": "debit"
+  },
+  "ifrs-dk:DividendAvailableForDistribution": {
+    "label": "Udbytte til udlodning",
+    "balance": "credit"
+  },
+  "ifrs-dk:Equipment": {
+    "label": "Driftsmidler",
+    "balance": "debit"
+  },
+  "ifrs-dk:Fittings": {
+    "label": "Installationer",
+    "balance": "debit"
+  },
+  "ifrs-dk:Fixtures": {
+    "label": "Inventar",
+    "balance": "debit"
+  },
+  "ifrs-dk:ForeignExchangeAdjustmentsToHedgingTransactions": {
+    "label": "Valutakursreguleringer vedrørende sikringstransaktioner",
+    "balance": "credit"
+  },
+  "ifrs-dk:Franchises": {
+    "label": "Franchiseaftaler",
+    "balance": "debit"
+  },
+  "ifrs-dk:ITDevelopmentProjectsInProgress": {
+    "label": "It-udviklingsprojekter under opførelse",
+    "balance": "debit"
+  },
+  "ifrs-dk:InfrastructureAndPlant": {
+    "label": "Infrastruktur og tekniske anlæg",
+    "balance": "debit"
+  },
+  "ifrs-dk:IntangibleAssetsFromAcquisitions": {
+    "label": "Immaterielle aktiver erhvervet ved virksomhedskøb",
+    "balance": "debit"
+  },
+  "ifrs-dk:IntangibleRights": {
+    "label": "Rettigheder",
+    "balance": "debit"
+  },
+  "ifrs-dk:InvestmentsInPortfolioCompanies": {
+    "label": "Investeringer i porteføljevirksomheder",
+    "balance": "debit"
+  },
+  "ifrs-dk:Knowhow": {
+    "label": "Knowhow",
+    "balance": "debit"
+  },
+  "ifrs-dk:LeaseholdImprovements": {
+    "label": "Indretning af lejede lokaler",
+    "balance": "debit"
+  },
+  "ifrs-dk:LiabilitiesAssociatedWithAssetsHeldForSale": {
+    "label": "Forpligtelser vedrørende aktiver bestemt for salg",
+    "balance": "credit"
+  },
+  "ifrs-dk:LiabilitiesHeldForSale": {
+    "label": "Forpligtelser bestemt til salg",
+    "balance": "credit"
+  },
+  "ifrs-dk:Licenses": {
+    "label": "Licenser",
+    "balance": "debit"
+  },
+  "ifrs-dk:MiscellaneousEquity": {
+    "label": "Diverse egenkapital",
+    "balance": "credit"
+  },
+  "ifrs-dk:MortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:NonCurrentPayablesToShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:NonCurrentPayablesToSubsidiariesAndShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentBankLoans": {
+    "label": "Bankgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentBonds": {
+    "label": "Langfristede obligationer",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentContractLiabilities": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentDebentures": {
+    "label": "Obligationslån",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentDerivativesAssets": {
+    "label": "Langfristede derivater",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentInvestments": {
+    "label": "Langfristede investeringer",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentListedShares": {
+    "label": "Langfristede børsnoterede aktier",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentMortgageDebt": {
+    "label": "Prioritetsgæld",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToAssociates": {
+    "label": "Langfristede gæld til associerede virksomheder",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToCreditInstitutions": {
+    "label": "Kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToJointVentures": {
+    "label": "Langfristede gæld til joint ventures",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToMortgageCreditInstitutions": {
+    "label": "Real kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToOtherCreditInstitutions": {
+    "label": "Andre kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToParentCompany": {
+    "label": "Langfristede gæld til moderselskab",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPayablesToSubsidiaries": {
+    "label": "Langfristede gæld til datterselskaber",
+    "balance": "credit"
+  },
+  "ifrs-dk:NoncurrentPrepaymentsDeposits": {
+    "label": "Deposita",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentReceivablesFromAssociates": {
+    "label": "Langfristede tilgodehavender hos associerede virksomheder",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentReceivablesFromJointVentures": {
+    "label": "Langfristede tilgodehavender hos joint ventures",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentReceivablesFromSubsidaries": {
+    "label": "Langfristede tilgodehavender hos datterselskaber",
+    "balance": "debit"
+  },
+  "ifrs-dk:NoncurrentSubordinatedLoans": {
+    "label": "Langfristet ansvarlig lånekapital",
+    "balance": "debit"
+  },
+  "ifrs-dk:OperationalMaterial": {
+    "label": "Driftsmateriel",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherCurrentBorrowings": {
+    "label": "Andre lån",
+    "balance": "credit"
+  },
+  "ifrs-dk:OtherDevelopmentProjects": {
+    "label": "Andre udviklingsprojekter",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherInvestmentsInSubsidiariesJointVenturesAndAssociates": {
+    "label": "Andre investeringer",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherIssuedCapital": {
+    "label": "Anden virksomhedskapital",
+    "balance": "credit"
+  },
+  "ifrs-dk:OtherNoncurrentBorrowings": {
+    "label": "Andre lån",
+    "balance": "credit"
+  },
+  "ifrs-dk:OtherNoncurrentEquityInvestments": {
+    "label": "Andre aktie investeringer",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherNoncurrentInvestments": {
+    "label": "Andre investeringer",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherNoncurrentReceivablesDeposits": {
+    "label": "Deposita",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherNoninterestbearingFinancialAssets": {
+    "label": "Øvrige finansielle aktiver (ikke-rentebærende)",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherPlantEquipmentAndFixtures": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherPlantFixturesAndFittingsToolsAndEquipment": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherPropertyPlantAndEquipmentInProgress": {
+    "label": "Andre materielle aktiver under opførelse",
+    "balance": "debit"
+  },
+  "ifrs-dk:OtherSecuritiesAndInvestments": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PatentsAndLicenses": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PatentsLicensesAndSoftware": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PayabelsToCreditInstitutions": {
+    "label": "Kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:PayablesToMortgageCreditInstitutions": {
+    "label": "Real kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:PayablesToOtherCreditInstitutions": {
+    "label": "Andre kreditinstitutter",
+    "balance": "credit"
+  },
+  "ifrs-dk:PlantAndMachinery": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PrepaymentsForPropertyPlantAndEquipment": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PrepaymentsToSubcontractors": {
+    "label": "Forudbetaling til underleverandører",
+    "balance": "debit"
+  },
+  "ifrs-dk:ProductionFacility": {
+    "label": "Produktionsanlæg",
+    "balance": "debit"
+  },
+  "ifrs-dk:ProductionFacilityAndMachinery": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:ProjectPortfolio": {
+    "label": "Projektbeholdning",
+    "balance": "debit"
+  },
+  "ifrs-dk:PropertiesHeldForSale": {
+    "label": "Ejendomme til videresalg",
+    "balance": "debit"
+  },
+  "ifrs-dk:PropertyPlantAndEquipmentInProgress": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:PropertyPlantAndEquipmentInProgressAndPrepaymentsForPropertyPlantAndEquipment": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:ReceivablesFromAssociates": {
+    "label": "Tilgodehavender hos associerede virksomheder",
+    "balance": "debit"
+  },
+  "ifrs-dk:ReceivablesFromJointVentures": {
+    "label": "Tilgodehavender hos joint ventures",
+    "balance": "debit"
+  },
+  "ifrs-dk:ReceivablesFromSalesAndServices": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit"
+  },
+  "ifrs-dk:ReceivablesFromSalesOfInvestmentProperty": {
+    "label": "Tilgodehavender fra salg af investeringsejendom",
+    "balance": "debit"
+  },
+  "ifrs-dk:ReceivablesFromSubsidaries": {
+    "label": "Tilgodehavender hos datterselskaber",
+    "balance": "debit"
+  },
+  "ifrs-dk:ReserveForActuariaProfitLoss": {
+    "label": "Reserve for aktuarmæssige gevinster/tab",
+    "balance": "credit"
+  },
+  "ifrs-dk:ReserveForFairValueAdjustmentsToHedgingInstruments": {
+    "label": "Dagsværdi af sikringsinstrumenter",
+    "balance": "credit"
+  },
+  "ifrs-dk:ReserveForTreasuryShares": {
+    "label": "Reserve for egne aktier",
+    "balance": "debit"
+  },
+  "ifrs-dk:RetainedEarningsFromParentCompany": {
+    "label": "Overført resultat, moderselskab",
+    "balance": "credit"
+  },
+  "ifrs-dk:RetirementBenefitPlanAssets": {
+    "label": "Pensionsaktiver",
+    "balance": "debit"
+  },
+  "ifrs-dk:RightofuseAssets": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:Securities": {
+    "label": "Værdipapirer",
+    "balance": "debit"
+  },
+  "ifrs-dk:StockShares": {
+    "label": "Beholdning egne aktier",
+    "balance": "debit"
+  },
+  "ifrs-dk:SubordinatedLoans": {
+    "label": "Ansvarlig lånekapital",
+    "balance": "debit"
+  },
+  "ifrs-dk:TangibleExplorationActivities": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToAssociates": {
+    "label": "Kortfristede gæld til associerede virksomheder",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToJointVentures": {
+    "label": "Kortfristede gæld til joint ventures",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToParentCompany": {
+    "label": "Kortfristede gæld til moderselskab",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToSubsidiaries": {
+    "label": "Kortfristede gæld til datterselskaber",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherCurrentPayablesToSubsidiariesAndShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToAssociates": {
+    "label": "Gæld til associerede virksomheder",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToJointVentures": {
+    "label": "Gæld til joint ventures",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToParentCompany": {
+    "label": "Gæld til moderselskab",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToSubsidiaries": {
+    "label": "Gæld til datterselskaber",
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeAndOtherPayablesToSubsidiariesAndShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:TradeandOtherCurrentPayablesToShareholdersAndManagement": {
+    "label": null,
+    "balance": "credit"
+  },
+  "ifrs-dk:TransferRights": {
+    "label": null,
+    "balance": "debit"
+  },
+  "ifrs-dk:WorkInProgressForThirdPartiesAssets": {
+    "label": "Igangværende arbejder for fremmed regning",
+    "balance": "debit"
+  },
+  "ifrs-full:Accruals": {
+    "label": "Skyldige omkostninger",
+    "balance": "credit"
+  },
+  "ifrs-full:AccrualsClassifiedAsCurrent": {
+    "label": "Skyldige omkostninger klassificeret som kortfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:AccrualsClassifiedAsNoncurrent": {
+    "label": "Skyldige omkostninger klassificeret som langfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:AccumulatedOtherComprehensiveIncome": {
+    "label": "Akkumuleret anden totalindkomst",
+    "balance": "credit"
+  },
+  "ifrs-full:AdditionalPaidinCapital": {
+    "label": "Overkurs ved emission",
+    "balance": "credit"
+  },
+  "ifrs-full:Advances": {
+    "label": "Modtagne forskud",
+    "balance": "credit"
+  },
+  "ifrs-full:AmountRecognisedInOtherComprehensiveIncomeAndAccumulatedInEquityRelatingToNoncurrentAssetsOrDisposalGroupsHeldForSale": {
+    "label": "Beløb, der er indregnet i anden totalindkomst og akkumuleret i egenkapitalen, og som er tilknyttet et langfristet aktiv eller en afståelsesgruppe, der er klassificeret som besiddelse med henblik på salg",
+    "balance": "credit"
+  },
+  "ifrs-full:Assets": {
+    "label": "Aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:BalancesWithBanks": {
+    "label": "Mellemværender med banker",
+    "balance": "debit"
+  },
+  "ifrs-full:BankingArrangementsClassifiedAsCashEquivalents": {
+    "label": "Andre bankaftaler klassificeret som likvide midler",
+    "balance": "debit"
+  },
+  "ifrs-full:BiologicalAssets": {
+    "label": "Biologiske aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:Borrowings": {
+    "label": "Lån",
+    "balance": "credit"
+  },
+  "ifrs-full:BrandNames": {
+    "label": "Mærkenavne",
+    "balance": "debit"
+  },
+  "ifrs-full:Buildings": {
+    "label": "Bygninger",
+    "balance": "debit"
+  },
+  "ifrs-full:CapitalRedemptionReserve": {
+    "label": "Reserve for indløselig kapital",
+    "balance": "credit"
+  },
+  "ifrs-full:CapitalReserve": {
+    "label": "Bunden reserve",
+    "balance": "credit"
+  },
+  "ifrs-full:Cash": {
+    "label": "Likvide beholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:CashAndCashEquivalents": {
+    "label": "Likvider",
+    "balance": "debit"
+  },
+  "ifrs-full:CashEquivalents": {
+    "label": "Likvide midler",
+    "balance": "debit"
+  },
+  "ifrs-full:CashOnHand": {
+    "label": "Kontante beholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:ComputerSoftware": {
+    "label": "Computersoftware",
+    "balance": "debit"
+  },
+  "ifrs-full:ConstructionInProgress": {
+    "label": "Igangværende opførelse",
+    "balance": "debit"
+  },
+  "ifrs-full:CopyrightsPatentsAndOtherIndustrialPropertyRightsServiceAndOperatingRights": {
+    "label": "Ophavsrettigheder, patenter og andre industrielle enerettigheder og rettigheder vedrørende tjenesteydelser og driftsrettigheder",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentAccruedExpensesAndOtherCurrentLiabilities": {
+    "label": "Kortfristede periodeafgrænsningsposter og andre kortfristede forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentAdvances": {
+    "label": "Modtagne kortfristede forskud",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentAssets": {
+    "label": "Kortfristede aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentAssetsOtherThanAssetsOrDisposalGroupsClassifiedAsHeldForSaleOrAsHeldForDistributionToOwners": {
+    "label": "Andre kortfristede aktiver end langfristede aktiver eller afståelsesgrupper klassificeret som værende bestemt for salg eller bestemt for udlodning til ejere",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentBiologicalAssets": {
+    "label": "Kortfristede biologiske aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentBorrowingsAndCurrentPortionOfNoncurrentBorrowings": {
+    "label": "Kortfristede lån og kortfristet del af langfristede lån",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentDerivativeFinancialLiabilities": {
+    "label": "Kortfristede afledte finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentDividendPayables": {
+    "label": "Kortfristet skyldigt udbytte",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinanceLeaseLiabilities": {
+    "label": "Kortfristede finansielle leasingforpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinancialAssets": {
+    "label": "Kortfristede finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtAmortisedCost": {
+    "label": "Kortfristede finansielle aktiver til amortiseret kostpris",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtFairValueThroughOtherComprehensiveIncome": {
+    "label": "Kortfristede finansielle aktiver til dagsværdi via anden totalindkomst",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtFairValueThroughProfitOrLoss": {
+    "label": "Kortfristede finansielle aktiver til dagsværdi via resultatet",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Kortfristede finansielle aktiver til dagsværdi via resultatet, klassificeret som værende besiddet med handel for øje",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtFairValueThroughProfitOrLossDesignatedUponInitialRecognition": {
+    "label": "Kortfristede finansielle aktiver til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAtFairValueThroughProfitOrLossMandatorilyMeasuredAtFairValue": {
+    "label": "Kortfristede finansielle aktiver til dagsværdi via resultatet, obligatorisk måling til dagsværdi",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialAssetsAvailableforsale": {
+    "label": "Kortfristede finansielle aktiver disponible for salg",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentFinancialLiabilities": {
+    "label": "Kortfristede finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinancialLiabilitiesAtAmortisedCost": {
+    "label": "Kortfristede finansielle forpligtelser til amortiseret kostpris",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinancialLiabilitiesAtFairValueThroughProfitOrLoss": {
+    "label": "Kortfristede finansielle forpligtelser til dagsværdi via resultatet",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinancialLiabilitiesAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Kortfristede finansielle forpligtelser til dagsværdi via resultatet, klassificeret som værende besiddet med handel for øje",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentFinancialLiabilitiesAtFairValueThroughProfitOrLossDesignatedUponInitialRecognition": {
+    "label": "Kortfristede finansielle forpligtelser til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentGovernmentGrants": {
+    "label": "Kortfristede offentlige tilskud",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentHeldtomaturityInvestments": {
+    "label": "Kortfristede hold-til-udløb-investeringer",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentLiabilities": {
+    "label": "Kortfristede forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentLiabilitiesOtherThanLiabilitiesIncludedInDisposalGroupsClassifiedAsHeldForSale": {
+    "label": "Andre kortfristede forpligtelser end forpligtelser omfattet af afståelsesgrupper klassificeret som værende bestemt for salg",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentLoansAndReceivables": {
+    "label": "Kortfristede udlån og tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentNoncashAssetsPledgedAsCollateralForWhichTransfereeHasRightByContractOrCustomToSellOrRepledgeCollateral": {
+    "label": "Kortfristede ikke-kontante aktiver stillet som sikkerhed, hvor erhververen i henhold til kontrakt eller almindelig praksis har ret til at sælge eller genpantsætte pantet",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentPortionOfLongtermBorrowings": {
+    "label": "Kortfristet del af langfristede lån",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentPrepaidExpenses": {
+    "label": "Kortfristede forudbetalte omkostninger",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentPrepayments": {
+    "label": "Kortfristede periodeafgrænsningsposter",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentProvisions": {
+    "label": "Kortfristede hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentProvisionsForEmployeeBenefits": {
+    "label": "Kortsigtede hensatte forpligtelser vedrørende personaleydelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentRecognisedAssetsDefinedBenefitPlan": {
+    "label": "Kortfristet ydelsesbaseret nettopensionsaktiv",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentRecognisedLiabilitiesDefinedBenefitPlan": {
+    "label": "Kortfristet ydelsesbaseret nettopensionsforpligtelse",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentRefundsProvision": {
+    "label": "Kortfristet hensat forpligtelse til refunderinger",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentTaxAssets": {
+    "label": "Aktuelle skatteaktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentTaxAssetsCurrent": {
+    "label": "Aktuelle skatteaktiver, kortfristede",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentTaxAssetsNoncurrent": {
+    "label": "Aktuelle skatteaktiver, langfristede",
+    "balance": "debit"
+  },
+  "ifrs-full:CurrentTaxLiabilities": {
+    "label": "Aktuelle skatteforpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentTaxLiabilitiesCurrent": {
+    "label": "Aktuelle skatteforpligtelser, kortfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentTaxLiabilitiesNoncurrent": {
+    "label": "Aktuelle skatteforpligtelser, langfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:CurrentTradeReceivables": {
+    "label": "Kortfristede tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit"
+  },
+  "ifrs-full:DebtSecurities": {
+    "label": "Udstedte gældsinstrumenter",
+    "balance": "credit"
+  },
+  "ifrs-full:DeferredIncome": {
+    "label": "Periodiserede indtægter",
+    "balance": "credit"
+  },
+  "ifrs-full:DeferredIncomeClassifiedAsCurrent": {
+    "label": "Periodiserede indtægter klassificeret som kortfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:DeferredIncomeClassifiedAsNoncurrent": {
+    "label": "Periodiserede indtægter klassificeret som langfristede",
+    "balance": "credit"
+  },
+  "ifrs-full:DeferredTaxAssets": {
+    "label": "Udskudte skatteaktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:DeferredTaxLiabilities": {
+    "label": "Udskudte skatteforpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:DepositsFromBanks": {
+    "label": "Indlån fra banker",
+    "balance": "credit"
+  },
+  "ifrs-full:DepositsFromCustomers": {
+    "label": "Indskud fra kunder",
+    "balance": "credit"
+  },
+  "ifrs-full:DerivativeFinancialLiabilities": {
+    "label": "Afledte finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:DividendPayables": {
+    "label": "Skyldigt udbytte",
+    "balance": "credit"
+  },
+  "ifrs-full:Equity": {
+    "label": "Egenkapital",
+    "balance": "credit"
+  },
+  "ifrs-full:EquityAndLiabilities": {
+    "label": "Passiver",
+    "balance": "credit"
+  },
+  "ifrs-full:EquityAttributableToOwnersOfParent": {
+    "label": "Egenkapital, der kan henføres til deltagere i modervirksomheden",
+    "balance": "credit"
+  },
+  "ifrs-full:FinanceLeaseLiabilities": {
+    "label": "Finansielle leasingforpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:FinancialAssets": {
+    "label": "Finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtAmortisedCost": {
+    "label": "Finansielle aktiver til amortiseret kostpris",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtFairValueThroughOtherComprehensiveIncome": {
+    "label": "Finansielle aktiver til dagsværdi via anden totalindkomst",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtFairValueThroughProfitOrLoss": {
+    "label": "Finansielle aktiver til dagsværdi via resultatet",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Finansielle aktiver til dagsværdi via resultatet, klassificeret som finansielle aktiver, der besiddes med handel for øje",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtFairValueThroughProfitOrLossDesignatedAsUponInitialRecognition": {
+    "label": "Finansielle aktiver til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAtFairValueThroughProfitOrLossMandatorilyMeasuredAtFairValue": {
+    "label": "Finansielle aktiver til dagsværdi via resultatet, obligatorisk måling til dagsværdi",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialAssetsAvailableforsale": {
+    "label": "Finansielle aktiver disponible for salg",
+    "balance": "debit"
+  },
+  "ifrs-full:FinancialLiabilities": {
+    "label": "Finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:FinancialLiabilitiesAtAmortisedCost": {
+    "label": "Finansielle forpligtelser til amortiseret kostpris",
+    "balance": "credit"
+  },
+  "ifrs-full:FinancialLiabilitiesAtFairValueThroughProfitOrLoss": {
+    "label": "Finansielle forpligtelser til dagsværdi via resultatet",
+    "balance": "credit"
+  },
+  "ifrs-full:FinancialLiabilitiesAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Finansielle forpligtelser til dagsværdi via resultatet, der opfylder definitionen af en finansiel fopligtelse, der besiddes med handel for øje",
+    "balance": "credit"
+  },
+  "ifrs-full:FinancialLiabilitiesAtFairValueThroughProfitOrLossDesignatedAsUponInitialRecognition": {
+    "label": "Finansielle forpligtelser til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "credit"
+  },
+  "ifrs-full:FinishedGoods": {
+    "label": "Kortfristede færdigvarer",
+    "balance": "debit"
+  },
+  "ifrs-full:FixturesAndFittings": {
+    "label": "Inventar",
+    "balance": "debit"
+  },
+  "ifrs-full:Goodwill": {
+    "label": "Goodwill",
+    "balance": "debit"
+  },
+  "ifrs-full:HeldtomaturityInvestments": {
+    "label": "Hold-til-udløb-investeringer",
+    "balance": "debit"
+  },
+  "ifrs-full:IntangibleAssetsAndGoodwill": {
+    "label": "Immaterielle aktiver og goodwill",
+    "balance": "debit"
+  },
+  "ifrs-full:IntangibleAssetsOtherThanGoodwill": {
+    "label": "Andre immaterielle aktiver end goodwill",
+    "balance": "debit"
+  },
+  "ifrs-full:IntangibleAssetsUnderDevelopment": {
+    "label": "Immaterielle aktiver under udvikling",
+    "balance": "debit"
+  },
+  "ifrs-full:IntangibleExplorationAndEvaluationAssets": {
+    "label": "Immaterielle efterforsknings- og vurderingsaktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:Inventories": {
+    "label": "Kortfristede varebeholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:InventoriesTotal": {
+    "label": "Varebeholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentAccountedForUsingEquityMethod": {
+    "label": "Kapitalandele regnskabsmæssigt behandlet efter indre værdis metode",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentContractsLiabilities": {
+    "label": "Forpligtelser i forbindelse med investeringskontrakter",
+    "balance": "credit"
+  },
+  "ifrs-full:InvestmentProperty": {
+    "label": "Investeringsejendomme",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentsInAssociates": {
+    "label": "Kapitalandele i associerede virksomheder",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentsInJointVentures": {
+    "label": "Kapitalandele i joint ventures",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentsInSubsidiaries": {
+    "label": "Kapitalandele i dattervirksomheder",
+    "balance": "debit"
+  },
+  "ifrs-full:InvestmentsInSubsidiariesJointVenturesAndAssociates": {
+    "label": "Kapitalandele i dattervirksomheder, joint ventures og associerede virksomheder",
+    "balance": "debit"
+  },
+  "ifrs-full:IssuedCapital": {
+    "label": "Udstedt virksomhedskapital",
+    "balance": "credit"
+  },
+  "ifrs-full:Land": {
+    "label": "Grunde",
+    "balance": "debit"
+  },
+  "ifrs-full:LandAndBuildings": {
+    "label": "Grunde og bygninger",
+    "balance": "debit"
+  },
+  "ifrs-full:LegalProceedingsProvision": {
+    "label": "Hensatte forpligtelser vedrørende retssager",
+    "balance": "credit"
+  },
+  "ifrs-full:Liabilities": {
+    "label": "Forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:LiabilitiesIncludedInDisposalGroupsClassifiedAsHeldForSale": {
+    "label": "Forpligtelser omfattet af afståelsesgrupper klassificeret som værende bestemt for salg",
+    "balance": "credit"
+  },
+  "ifrs-full:LicencesAndFranchises": {
+    "label": "Licenser og franchiseaftaler",
+    "balance": "debit"
+  },
+  "ifrs-full:LoansAndReceivables": {
+    "label": "Udlån og tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:LongtermBorrowings": {
+    "label": "Langfristet del af langfristede lån",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermLegalProceedingsProvision": {
+    "label": "Langfristede hensatte forpligtelser vedrørende retssager",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermMiscellaneousOtherProvisions": {
+    "label": "Diverse andre langfristede hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermOnerousContractsProvision": {
+    "label": "Langfristede hensatte forpligtelser til tabsgivende kontrakter",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermProvisionForDecommissioningRestorationAndRehabilitationCosts": {
+    "label": "Langfristede hensatte forpligtelser til afviklings-, retablerings- og rehabiliteringsomkostninger",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermRestructuringProvision": {
+    "label": "Langfristede hensatte forpligtelser til omstrukturering",
+    "balance": "credit"
+  },
+  "ifrs-full:LongtermWarrantyProvision": {
+    "label": "Langfristede garantihensættelser",
+    "balance": "credit"
+  },
+  "ifrs-full:Machinery": {
+    "label": "Maskiner",
+    "balance": "debit"
+  },
+  "ifrs-full:MastheadsAndPublishingTitles": {
+    "label": "Avisnavne og udgivelsestitler",
+    "balance": "debit"
+  },
+  "ifrs-full:Merchandise": {
+    "label": "Kortfristede handelsvarer",
+    "balance": "debit"
+  },
+  "ifrs-full:MergerReserve": {
+    "label": "Fusionsreserve",
+    "balance": "credit"
+  },
+  "ifrs-full:MiscellaneousOtherProvisions": {
+    "label": "Diverse andre hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncashAssetsPledgedAsCollateralForWhichTransfereeHasRightByContractOrCustomToSellOrRepledgeCollateral": {
+    "label": "Ikke-kontante aktiver stillet som sikkerhed, hvor erhververen i henhold til kontrakt eller almindelig praksis har ret til at sælge eller genpantsætte pantet",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncontrollingInterests": {
+    "label": "Minoritetsinteresser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentAdvances": {
+    "label": "Modtagne langfristede forskud",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentAssets": {
+    "label": "Langfristede aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentAssetsOrDisposalGroupsClassifiedAsHeldForDistributionToOwners": {
+    "label": "Langfristede aktiver eller afståelsesgrupper klassificeret som bestemt for udlodning til ejere",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentAssetsOrDisposalGroupsClassifiedAsHeldForSale": {
+    "label": "Langfristede aktiver eller afståelsesgrupper klassificeret som bestemt for salg",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentAssetsOrDisposalGroupsClassifiedAsHeldForSaleOrAsHeldForDistributionToOwners": {
+    "label": "Langfristede aktiver eller afståelsesgrupper klassificeret som værende bestemt for salg eller bestemt for udlodning til ejere",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentBiologicalAssets": {
+    "label": "Langfristede biologiske aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentDerivativeFinancialAssets": {
+    "label": "Langfristede afledte finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentDerivativeFinancialLiabilities": {
+    "label": "Langfristede afledte finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentDividendPayables": {
+    "label": "Langfristet skyldigt udbytte",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinanceLeaseLiabilities": {
+    "label": "Langfristede finansielle leasingforpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinancialAssets": {
+    "label": "Langfristede finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtAmortisedCost": {
+    "label": "Langfristede finansielle aktiver til amortiseret kostpris",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtFairValueThroughOtherComprehensiveIncome": {
+    "label": "Langfristede finansielle aktiver til dagsværdi via anden totalindkomst",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtFairValueThroughProfitOrLoss": {
+    "label": "Langfristede finansielle aktiver til dagsværdi via resultatet",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Langfristede finansielle aktiver til dagsværdi via resultatet, klassificeret som værende besiddet med handel for øje",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtFairValueThroughProfitOrLossDesignatedUponInitialRecognition": {
+    "label": "Langfristede finansielle aktiver til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAtFairValueThroughProfitOrLossMandatorilyMeasuredAtFairValue": {
+    "label": "Langfristede finansielle aktiver til dagsværdi via resultatet, obligatorisk måling til dagsværdi",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialAssetsAvailableforsale": {
+    "label": "Langfristede finansielle aktiver disponible for salg",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentFinancialLiabilities": {
+    "label": "Langfristede finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinancialLiabilitiesAtAmortisedCost": {
+    "label": "Langfristede finansielle forpligtelser til amortiseret kostpris",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinancialLiabilitiesAtFairValueThroughProfitOrLoss": {
+    "label": "Langfristede finansielle forpligtelser til dagsværdi via resultatet",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinancialLiabilitiesAtFairValueThroughProfitOrLossClassifiedAsHeldForTrading": {
+    "label": "Langfristede finansielle forpligtelser til dagsværdi via resultatet, klassificeret som værende besiddet med handel for øje",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentFinancialLiabilitiesAtFairValueThroughProfitOrLossDesignatedUponInitialRecognition": {
+    "label": "Langfristede finansielle forpligtelser til dagsværdi med indregning i resultatopgørelsen, klassificeret ved første indregning eller senere",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentGovernmentGrants": {
+    "label": "Langfristede offentlige tilskud",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentHeldtomaturityInvestments": {
+    "label": "Langfristede hold-til-udløb-investeringer",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentInventories": {
+    "label": "Langfristede varebeholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentLeasePrepayments": {
+    "label": "Langfristet forudbetalt leje",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentLiabilities": {
+    "label": "Langfristede forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentLoansAndReceivables": {
+    "label": "Langfristede udlån og tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentNoncashAssetsPledgedAsCollateralForWhichTransfereeHasRightByContractOrCustomToSellOrRepledgeCollateral": {
+    "label": "Langfristede ikke-kontante aktiver stillet som sikkerhed, hvor erhververen i henhold til kontrakt eller almindelig praksis har ret til at sælge eller genpantsætte pantet",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentPayables": {
+    "label": "Leverandørgæld og anden langfristet gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentPayablesToRelatedParties": {
+    "label": "Langfristede gæld til nærtstående parter",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentPayablesToTradeSuppliers": {
+    "label": "Langfristet leverandørgæld",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentPrepayments": {
+    "label": "Langfristede forudbetalinger",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentProvisions": {
+    "label": "Langfristede hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentProvisionsForEmployeeBenefits": {
+    "label": "Langfristede hensatte forpligtelser vedrørende personaleydelser",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser og andre langfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentReceivablesDueFromRelatedParties": {
+    "label": "Langfristede tilgodehavender hos nærtstående parter",
+    "balance": "debit"
+  },
+  "ifrs-full:NoncurrentRecognisedLiabilitiesDefinedBenefitPlan": {
+    "label": "Langfristet ydelsesbaseret nettopensionsforpligtelse",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentRefundsProvision": {
+    "label": "Langfristet hensat forpligtelse til refunderinger",
+    "balance": "credit"
+  },
+  "ifrs-full:NoncurrentTradeReceivables": {
+    "label": "Langfristede tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit"
+  },
+  "ifrs-full:OfficeEquipment": {
+    "label": "Kontorudstyr",
+    "balance": "debit"
+  },
+  "ifrs-full:OnerousContractsProvision": {
+    "label": "Hensatte forpligtelser til tabsgivende kontrakter",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherCashAndCashEquivalents": {
+    "label": "Andre likvide midler",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherCurrentFinancialAssets": {
+    "label": "Andre kortfristede finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherCurrentFinancialLiabilities": {
+    "label": "Andre kortfristede finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherCurrentLiabilities": {
+    "label": "Andre kortfristede forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherCurrentNonfinancialAssets": {
+    "label": "Andre kortfristede ikke-finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherCurrentNonfinancialLiabilities": {
+    "label": "Andre kortfristede ikke-finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherCurrentPayables": {
+    "label": "Anden kortfristet gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherCurrentReceivables": {
+    "label": "Andre kortfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherEquityInterest": {
+    "label": "Andre egenkapitalandele",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherFinancialAssets": {
+    "label": "Andre finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherFinancialLiabilities": {
+    "label": "Andre finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherIntangibleAssets": {
+    "label": "Andre immaterielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherInventories": {
+    "label": "Andre kortfristede varebeholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherLiabilities": {
+    "label": "Andre forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherLongtermProvisions": {
+    "label": "Andre langfristede hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherNoncurrentFinancialAssets": {
+    "label": "Andre langfristede finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherNoncurrentFinancialLiabilities": {
+    "label": "Andre langfristede finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherNoncurrentLiabilities": {
+    "label": "Andre langfristede forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherNoncurrentNonfinancialAssets": {
+    "label": "Andre langfristede ikke-finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherNoncurrentNonfinancialLiabilities": {
+    "label": "Andre langfristede ikke-finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherNoncurrentPayables": {
+    "label": "Anden langfristet gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherNoncurrentReceivables": {
+    "label": "Andre langfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherNonfinancialAssets": {
+    "label": "Andre ikke-finansielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherNonfinancialLiabilities": {
+    "label": "Andre ikke-finansielle forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherPayables": {
+    "label": "Anden gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherPropertyPlantAndEquipment": {
+    "label": "Andre materielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherProvisions": {
+    "label": "Andre hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherReceivables": {
+    "label": "Andre tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:OtherReserves": {
+    "label": "Andre reserver",
+    "balance": "credit"
+  },
+  "ifrs-full:OtherShorttermProvisions": {
+    "label": "Andre kortfristede hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:Prepayments": {
+    "label": "Periodeafgrænsningsposter",
+    "balance": "debit"
+  },
+  "ifrs-full:ProductionSupplies": {
+    "label": "Kortfristede hjælpematerialer",
+    "balance": "debit"
+  },
+  "ifrs-full:PropertyPlantAndEquipment": {
+    "label": "Materielle aktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:ProvisionForDecommissioningRestorationAndRehabilitationCosts": {
+    "label": "Hensatte forpligtelser vedrørende afviklings-, retablerings- og rehabiliteringsomkostninger",
+    "balance": "credit"
+  },
+  "ifrs-full:Provisions": {
+    "label": "Hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:ProvisionsForEmployeeBenefits": {
+    "label": "Hensatte forpligtelser vedrørende personaleydelser",
+    "balance": "credit"
+  },
+  "ifrs-full:RawMaterials": {
+    "label": "Kortfristede råvarer",
+    "balance": "debit"
+  },
+  "ifrs-full:RecipesFormulaeModelsDesignsAndPrototypes": {
+    "label": "Opskrifter, formler, modeller, design og prototyper",
+    "balance": "debit"
+  },
+  "ifrs-full:RefundsProvision": {
+    "label": "Hensat forpligtelse til refunderinger",
+    "balance": "credit"
+  },
+  "ifrs-full:RepurchaseAgreementsAndCashCollateralOnSecuritiesLent": {
+    "label": "Omvendte genkøbsaftaler og kontant sikkerhed i udlånte værdipapirer",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveForCatastrophe": {
+    "label": "Katastrofereserve",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveForEqualisation": {
+    "label": "Udjævningsreserve",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfCashFlowHedges": {
+    "label": "Reserve for sikring af pengestrømme",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfChangeInFairValueOfFinancialLiabilityAttributableToChangeInCreditRiskOfLiability": {
+    "label": "Reserve for ændringer i dagsværdien af finansielle forpligtelser, der kan henføres til ændringer i forpligtelsens kreditrisiko",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfChangeInValueOfForeignCurrencyBasisSpreads": {
+    "label": "Reserve for ændring i værdi af basisspænd i fremmede valutaer",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfDiscretionaryParticipationFeatures": {
+    "label": "Reserve af skønsmæssig deltagelse",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfEquityComponentOfConvertibleInstruments": {
+    "label": "Reserve vedrørende egenkapitalandel af konvertible instrumenter",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfExchangeDifferencesOnTranslation": {
+    "label": "Reserve for valutakursdifferencer ved omregning",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfGainsAndLossesFromInvestmentsInEquityInstruments": {
+    "label": "Reserve af gevinster og tab på investeringer i egenkapitalinstrumenter",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfGainsAndLossesOnRemeasuringAvailableforsaleFinancialAssets": {
+    "label": "Reserve for gevinster og tab på genmåling af finansielle aktiver disponible for salg",
+    "balance": "credit"
+  },
+  "ifrs-full:ReserveOfSharebasedPayments": {
+    "label": "Reserve for aktiebaseret vederlæggelse",
+    "balance": "credit"
+  },
+  "ifrs-full:RestructuringProvision": {
+    "label": "Hensatte forpligtelser til omstrukturering",
+    "balance": "credit"
+  },
+  "ifrs-full:RetainedEarnings": {
+    "label": "Overført resultat",
+    "balance": "credit"
+  },
+  "ifrs-full:RevaluationSurplus": {
+    "label": "Opskrivningsreserve",
+    "balance": "credit"
+  },
+  "ifrs-full:SharePremium": {
+    "label": "Overkurs ved emission",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermBorrowings": {
+    "label": "Kortfristede lån",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermDepositsClassifiedAsCashEquivalents": {
+    "label": "Kortfristede indlån klassificeret som likvide beholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:ShorttermInvestmentsClassifiedAsCashEquivalents": {
+    "label": "Kortfristede kapitalandele klassificeret som likvide beholdninger",
+    "balance": "debit"
+  },
+  "ifrs-full:ShorttermLegalProceedingsProvision": {
+    "label": "Kortfristede hensatte forpligtelser vedrørende retssager",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermMiscellaneousOtherProvisions": {
+    "label": "Kortfristede diverse andre hensatte forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermOnerousContractsProvision": {
+    "label": "Kortfristede hensatte forpligtelser til tabsgivende kontrakter",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermProvisionForDecommissioningRestorationAndRehabilitationCosts": {
+    "label": "Kortfristede hensatte forpligtelser til afviklings-, retablerings- og rehabiliteringsomkostninger",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermRestructuringProvision": {
+    "label": "Kortfristede hensatte forpligtelser til omstruktureringer",
+    "balance": "credit"
+  },
+  "ifrs-full:ShorttermWarrantyProvision": {
+    "label": "Kortsigtet garantihensættelse",
+    "balance": "credit"
+  },
+  "ifrs-full:StatutoryReserve": {
+    "label": "Lovpligtig reserve",
+    "balance": "credit"
+  },
+  "ifrs-full:SubordinatedLiabilities": {
+    "label": "Efterstående forpligtelser",
+    "balance": "credit"
+  },
+  "ifrs-full:TangibleExplorationAndEvaluationAssets": {
+    "label": "Materielle efterforsknings- og vurderingsaktiver",
+    "balance": "debit"
+  },
+  "ifrs-full:TradeAndOtherCurrentPayables": {
+    "label": "Leverandørgæld og anden kortfristet gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherCurrentPayablesToRelatedParties": {
+    "label": "Kortfristet gæld til nærtstående parter",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherCurrentPayablesToTradeSuppliers": {
+    "label": "Kortfristet leverandørgæld",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherCurrentReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser og andre kortfristede tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:TradeAndOtherCurrentReceivablesDueFromRelatedParties": {
+    "label": "Kortfristede tilgodehavender hos nærtstående parter",
+    "balance": "debit"
+  },
+  "ifrs-full:TradeAndOtherPayables": {
+    "label": "Leverandørgæld og anden gæld",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherPayablesToRelatedParties": {
+    "label": "Gæld til nærtstående parter",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherPayablesToTradeSuppliers": {
+    "label": "Leverandørgæld",
+    "balance": "credit"
+  },
+  "ifrs-full:TradeAndOtherReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser og andre tilgodehavender",
+    "balance": "debit"
+  },
+  "ifrs-full:TradeAndOtherReceivablesDueFromRelatedParties": {
+    "label": "Tilgodehavender hos nærtstående parter",
+    "balance": "debit"
+  },
+  "ifrs-full:TradeReceivables": {
+    "label": "Tilgodehavender fra salg og tjenesteydelser",
+    "balance": "debit"
+  },
+  "ifrs-full:TreasuryShares": {
+    "label": "Egne aktier",
+    "balance": "debit"
+  },
+  "ifrs-full:Vehicles": {
+    "label": "Motorkøretøjer",
+    "balance": "debit"
+  },
+  "ifrs-full:WarrantyProvision": {
+    "label": "Garantihensættelse",
+    "balance": "credit"
+  },
+  "ifrs-full:WorkInProgress": {
+    "label": "Kortfristede varer under fremstilling",
+    "balance": "debit"
+  }
+}
