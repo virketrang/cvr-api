@@ -27,6 +27,7 @@ function report(
         balancesheet: container(values.balancesheet ?? {}) as never,
         incomeStatement: container(values.incomeStatement ?? {}) as never,
         notes: container({}) as never,
+        propertiesAtFairValue: null,
         dividendsInEquity: null,
         groupEntitiesFromNotes: [],
         consolidatedFinancialStatements: [],

@@ -11,6 +11,7 @@ import {
     membershipOf,
     overlapsWindow,
     participantRoleOf,
+    restructuringWindowOf,
     stintsOf,
     valueAt,
 } from "./corporate-group.periods.js";
@@ -413,5 +414,31 @@ describe("owners", () => {
             ["NOWACO INVEST 2012 ApS", "COMPANY", "10–14,99 %"],
             ["Anders Andersen", "PERSON", "5–9,99 %"],
         ]);
+    });
+});
+
+describe("restructuringWindowOf", () => {
+    const window = { from: "2022-12-31", to: "2025-09-01" };
+
+    it("reaches six years back from the last date in the multi-snapshot view", () => {
+        // Transfer 1 September 2025: five financial years end at the latest balance
+        // date, which can lie up to a year earlier, so the span starts 2019-09-02.
+        assert.deepEqual(restructuringWindowOf(window, ["2022-12-31", "2023-12-31", "2024-12-31", "2025-09-01"]), {
+            from: "2019-09-02",
+            to: "2025-09-01",
+        });
+    });
+
+    it("keeps an earlier first date and leaves the other views alone", () => {
+        assert.deepEqual(restructuringWindowOf({ from: "2015-01-01", to: "2025-09-01" }, ["2015-01-01", "2025-09-01"]), {
+            from: "2015-01-01",
+            to: "2025-09-01",
+        });
+        assert.deepEqual(restructuringWindowOf(window, null), window);
+        assert.equal(restructuringWindowOf(null, null), null);
+    });
+
+    it("handles a leap day", () => {
+        assert.equal(restructuringWindowOf({ from: "2024-02-29", to: "2024-02-29" }, ["2024-02-29"])?.from, "2018-03-01");
     });
 });

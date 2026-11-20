@@ -136,6 +136,28 @@ function dayNumber(iso: string): number {
     return Math.round(Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10))) / MS_PER_DAY);
 }
 
+/**
+ * The span mergers and demergers are reported for. In the multi-snapshot view
+ * (`dates`) the window runs from the first date to the last, and the workbook
+ * sends the three latest balance dates and the transfer date: about three
+ * years. The earnings in a valuation under boafgiftsloven § 12 a cover five
+ * financial years, and the accounts from before a merger or demerger in any of
+ * them must be combined or split by hand, so the span starts six years before
+ * the last date: five financial years plus the up to one year between the
+ * latest balance date and the transfer date. An earlier first date still wins.
+ * Other views use their window unchanged.
+ */
+export function restructuringWindowOf(window: DateWindow | null, dates: readonly string[] | null): DateWindow | null {
+    if (!window || !dates || dates.length === 0) return window;
+    const to = window.to;
+    const year = Number(to.slice(0, 4)) - 6;
+    const month = Number(to.slice(5, 7));
+    // Same day six years earlier (29 February becomes the 28th), then the day after.
+    const day = Math.min(Number(to.slice(8, 10)), new Date(Date.UTC(year, month, 0)).getUTCDate());
+    const from = new Date(Date.UTC(year, month - 1, day + 1)).toISOString().slice(0, 10);
+    return { from: from < window.from ? from : window.from, to };
+}
+
 /** Whether a range touches the window at all. */
 export function overlapsWindow(range: DateRange, window: DateWindow): boolean {
     return range.from <= window.to && (range.to === null || range.to >= window.from);

@@ -234,6 +234,16 @@ describe("AnnualReportService.assembleFiling", () => {
         assert.equal(skipped.length, 0);
     });
 
+    it("warns that a report with group figures only leaves the company's own figures to be entered", () => {
+        const { reports } = AnnualReportService.assembleFiling([
+            extract("AARSRAPPORT", stubInstance),
+            extract("AARSRAPPORT_ESEF", esefInstance("")),
+        ]);
+        const warning = reports[0].report.warnings.find((w) => w.code === "SOLO_FIGURES_MISSING");
+        assert.equal(reports[0].report.scope, "consolidated");
+        assert.match(warning?.message ?? "", /kun koncernens tal.*aflagt efter IFRS.*indtastes manuelt/);
+    });
+
     it("reports a stub on its own, so the caller learns that the figures are elsewhere", () => {
         const { reports, skipped } = AnnualReportService.assembleFiling([extract("AARSRAPPORT", stubInstance)]);
         assert.equal(reports.length, 0);
@@ -254,6 +264,7 @@ describe("AnnualReportService.assembleFiling", () => {
         assert.equal(report.balancesheet.assets?.value, 1183000000);
         assert.equal(report.incomeStatement.profitLoss?.value, 108000000);
         assert.equal(report.consolidated?.balancesheet.assets?.value, 24644000000);
+        assert.equal(report.warnings.some((w) => w.code === "SOLO_FIGURES_MISSING"), false);
     });
 
     it("keeps an ordinary ÅRL filing as it was", () => {

@@ -408,6 +408,7 @@ export default abstract class AnnualReportService {
             const parent = ok.find((outcome) => outcome !== esef && outcome.result.report.standard === "ÅRL");
             if (parent) AnnualReportService.mergeParentStatements(esef.result, parent.result);
 
+            AnnualReportService.warnIfSoloFiguresMissing(esef.result.report);
             return {
                 reports: [{ report: esef.result.report, priorFigures: esef.result.priorFigures }],
                 skipped: failed.filter((outcome) => !outcome.result.generalDataOnly),
@@ -416,10 +417,27 @@ export default abstract class AnnualReportService {
 
         // No ESEF instance: every readable document is a report of its own. A stub
         // only counts as a failure when nothing else in the filing could be read.
+        for (const outcome of ok) AnnualReportService.warnIfSoloFiguresMissing(outcome.result.report);
         return {
             reports: ok.map((outcome) => ({ report: outcome.result.report, priorFigures: outcome.result.priorFigures })),
             skipped: ok.length > 0 ? failed.filter((outcome) => !outcome.result.generalDataOnly) : failed,
         };
+    }
+
+    /**
+     * A report with the group's figures only leaves the company's own valuation
+     * empty. IFRS filers need not tag the parent's statements and most do not;
+     * the warning says so, so the empty cells have a stated cause.
+     */
+    private static warnIfSoloFiguresMissing(report: AnnualReport<Account>): void {
+        if (report.scope !== "consolidated") return;
+        report.warnings.push({
+            code: "SOLO_FIGURES_MISSING",
+            message:
+                "Årsrapporten indeholder kun koncernens tal i struktureret form" +
+                (report.standard === "ÅRL" ? "" : ` (aflagt efter IFRS, hvor moderselskabets egne tal ikke skal opmærkes)`) +
+                ". Selskabets egne tal skal indtastes manuelt fra den læsbare årsrapport.",
+        });
     }
 
     /**
@@ -437,6 +455,8 @@ export default abstract class AnnualReportService {
             report.balancesheet = parent.report.balancesheet;
             report.notes = parent.report.notes;
             report.dividendsInEquity = parent.report.dividendsInEquity;
+            // The parent company is what the workbook values; its own policy decides.
+            report.propertiesAtFairValue = parent.report.propertiesAtFairValue ?? report.propertiesAtFairValue;
             report.scope = "both";
             report.soloStandard = "ÅRL";
             report.unit = report.unit || parent.report.unit;

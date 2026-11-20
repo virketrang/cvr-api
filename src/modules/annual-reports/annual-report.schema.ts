@@ -621,6 +621,17 @@ const annualReportSchema = z.object({
             },
         },
     }),
+    propertiesAtFairValue: z
+        .boolean()
+        .nullable()
+        .openapi({
+            description:
+                "Om investeringsejendommene måles til dagsværdi (true) eller kostpris (false) ifølge årsrapporten. " +
+                "Aflæst af regnskabspraksis for investeringsejendomme og af, om linjen for dagsværdiregulering af " +
+                "investeringsejendomme er opmærket. Null, når årsrapporten ikke har investeringsejendomme eller " +
+                "ikke oplyser målegrundlaget.",
+            example: true,
+        }),
     dividendsInEquity: z
         .object({
             proposedDividend: dividendInEquitySchema.nullable().openapi({
@@ -736,6 +747,12 @@ const annualReportSchema = z.object({
                         }),
                     ),
                 }),
+                z.object({
+                    code: z.literal("SOLO_FIGURES_MISSING").openapi({ example: "SOLO_FIGURES_MISSING" }),
+                    message: z.string().openapi({
+                        description: "Menneskelæsbar (dansk) forklaring til brugeren.",
+                    }),
+                }),
             ]),
         )
         .openapi({
@@ -743,7 +760,10 @@ const annualReportSchema = z.object({
                 "Datakvalitets-advarsler for denne årsrapport. 'SCALING_REPAIRED' betyder, at et eller flere " +
                 "beløb manglede de nuller, som deres decimals-angivelse tilsiger, og er ganget op — kontrollér tallene. " +
                 "'PRIOR_YEAR_MISMATCH' betyder, at et eller flere beløb afviger fra sammenligningstallene for samme " +
-                "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse).",
+                "periode i den efterfølgende årsrapport (typisk en korrektion/omarbejdelse). " +
+                "'SOLO_FIGURES_MISSING' betyder, at årsrapporten kun har koncernens tal i struktureret form " +
+                "(typisk IFRS, hvor moderselskabets egne tal ikke skal opmærkes). Nye koder kan komme til; " +
+                "en klient bør vise message for koder, den ikke kender.",
             example: [],
         }),
     validation: z.array(validationFindingSchema).openapi({
@@ -840,6 +860,7 @@ export const responseSchema = z.object({
                 },
                 unit: "DKK",
                 notes: {},
+                propertiesAtFairValue: null,
                 dividendsInEquity: null,
                 groupEntitiesFromNotes: [],
                 consolidatedFinancialStatements: [],

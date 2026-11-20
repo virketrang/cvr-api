@@ -24,6 +24,7 @@ import ÅRL_TAXONOMY from "./annual-report.taxonomy.js";
 import IFRS_TAXONOMY from "./annual-report.taxonomy.ifrs.js";
 import { extractGroupEntities, extractIfrsGroupEntities } from "./annual-report.notes-extraction.js";
 import { dividendsInEquityOf } from "./annual-report.dividends.js";
+import { investmentPropertyAtFairValue } from "./annual-report.property.js";
 import { AppError, ErrorCode } from "../../utils/api-error.js";
 
 const XMLParser = new DOMParser();
@@ -716,6 +717,39 @@ export default class XBRLDocument {
     }
 
     /**
+     * Whether the investment property is measured at fair value (see
+     * investmentPropertyAtFairValue). Null when the report has no investment
+     * property: the workbook reads a true flag as "all property at fair value",
+     * so it must not be set from a policy that concerns no property.
+     */
+    private propertiesAtFairValue(
+        isIfrs: boolean,
+        reportingPeriodEndDate: string,
+        balanceSheets: Array<Partial<Record<string, Account>>>,
+        incomeStatements: Array<Partial<Record<string, Account>> | undefined>,
+    ): boolean | null {
+        const hasInvestmentProperty = balanceSheets.some((section) => (section.investmentProperty?.value ?? 0) !== 0);
+        if (!hasInvestmentProperty) return null;
+
+        const fairValueAdjustmentTagged = incomeStatements.some(
+            (section) => section?.gainsLossesFromCurrentValueAdjustmentsOfInvestmentProperty !== undefined,
+        );
+
+        const policyFact: TaxonomyFact = isIfrs
+            ? { name: "DescriptionOfAccountingPolicyForInvestmentPropertyExplanatory", namespace: "ifrs-full", label: "" }
+            : {
+                  name: "DescriptionOfMethodsOfRecognitionAndMeasurementBasisOfInvestmentProperty",
+                  namespace: "http://xbrl.dcca.dk/fsa",
+                  label: "",
+              };
+        const policies = (this.extractTaxonomyField(policyFact) ?? []).filter((record) => record.value);
+        const current = policies.filter((record) => record.context?.endDate === reportingPeriodEndDate);
+        const policyText = (current.length > 0 ? current : policies).map((record) => record.value).join(" ") || null;
+
+        return investmentPropertyAtFairValue({ policyText, fairValueAdjustmentTagged });
+    }
+
+    /**
      * Builds a stable key from a context's dimension members (ignoring the period),
      * so that facts about the same entity are grouped together even when they live
      * in different contexts — e.g. an entity's name in a duration context and its
@@ -1140,6 +1174,17 @@ export default class XBRLDocument {
                 incomeStatement,
                 balancesheet: balanceSheet,
                 notes,
+                propertiesAtFairValue: this.propertiesAtFairValue(
+                    isIfrs,
+                    reportingPeriod.reportingPeriodEndDate,
+                    [balanceSheet as unknown as Partial<Record<string, Account>>, consolidatedBalanceSheet],
+                    [
+                        incomeStatement as unknown as Partial<Record<string, Account>>,
+                        consolidatedIncomeStatement,
+                        priorFigures?.incomeStatement,
+                        priorFigures?.consolidated?.incomeStatement,
+                    ],
+                ),
                 // Filled just below, from the finished statements.
                 dividendsInEquity: null,
                 groupEntitiesFromNotes,

@@ -267,3 +267,39 @@ describe("XBRLDocument.extractTaxonomyData — dividends in equity", () => {
         assert.equal(dividendsInEquity?.extraordinaryDividendAfterBalanceSheetDate?.value, 350000);
     });
 });
+
+describe("XBRLDocument.extractTaxonomyData — investment property at fair value", () => {
+    const YEAR = duration("2025-01-01", "2025-12-31");
+    const report = (facts: string) =>
+        new XBRLDocument(
+            instance(
+                context("cy", YEAR) + context("end", instant("2025-12-31")),
+                `
+  <gsd:ReportingPeriodStartDate contextRef="cy">2025-01-01</gsd:ReportingPeriodStartDate>
+  <gsd:ReportingPeriodEndDate contextRef="cy">2025-12-31</gsd:ReportingPeriodEndDate>
+  <fsa:Equity contextRef="end" unitRef="DKK" decimals="0">5000000</fsa:Equity>
+  ${facts}`,
+            ),
+        ).extractTaxonomyData().report;
+
+    it("reads fair value from the accounting policy", () => {
+        const { propertiesAtFairValue } = report(`
+  <fsa:InvestmentProperty contextRef="end" unitRef="DKK" decimals="0">8000000</fsa:InvestmentProperty>
+  <fsa:DescriptionOfMethodsOfRecognitionAndMeasurementBasisOfInvestmentProperty contextRef="cy">Investeringsejendomme måles efter første indregning til dagsværdi.</fsa:DescriptionOfMethodsOfRecognitionAndMeasurementBasisOfInvestmentProperty>`);
+        assert.equal(propertiesAtFairValue, true);
+    });
+
+    it("reads fair value from a tagged adjustment line, also when it is zero", () => {
+        const { propertiesAtFairValue } = report(`
+  <fsa:InvestmentProperty contextRef="end" unitRef="DKK" decimals="0">8000000</fsa:InvestmentProperty>
+  <fsa:GainsLossesFromCurrentValueAdjustmentsOfInvestmentProperty contextRef="cy" unitRef="DKK" decimals="0">0</fsa:GainsLossesFromCurrentValueAdjustmentsOfInvestmentProperty>`);
+        assert.equal(propertiesAtFairValue, true);
+    });
+
+    it("is null without investment property, whatever the policy says", () => {
+        const { propertiesAtFairValue } = report(`
+  <fsa:LandAndBuildings contextRef="end" unitRef="DKK" decimals="0">3000000</fsa:LandAndBuildings>
+  <fsa:DescriptionOfMethodsOfRecognitionAndMeasurementBasisOfInvestmentProperty contextRef="cy">Investeringsejendomme måles til dagsværdi.</fsa:DescriptionOfMethodsOfRecognitionAndMeasurementBasisOfInvestmentProperty>`);
+        assert.equal(propertiesAtFairValue, null);
+    });
+});

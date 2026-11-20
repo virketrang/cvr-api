@@ -26,6 +26,7 @@ import {
     latestDayIn,
     membershipOf,
     overlapsWindow,
+    restructuringWindowOf,
     participantRoleOf,
     stintsOf,
     toDecimal,
@@ -448,7 +449,10 @@ export default abstract class CorporateGroupService {
         }
 
         if (window) {
-            company.restructurings = company.restructurings.filter((r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, window));
+            const restructuringWindow = restructuringWindowOf(window, options.dates) ?? window;
+            company.restructurings = company.restructurings.filter(
+                (r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, restructuringWindow),
+            );
             company.events = deriveEvents(stints, company.ownershipHistory ?? [], window, details.dateOfDissolution);
         }
 
@@ -693,8 +697,9 @@ export default abstract class CorporateGroupService {
         };
         CorporateGroupService.markOwnersInGroup(corporateGroup);
         if (lookup.window) {
+            const restructuringWindow = restructuringWindowOf(lookup.window, lookup.dates) ?? lookup.window;
             corporateGroup.restructurings = corporateGroup.restructurings.filter(
-                (r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, lookup.window!),
+                (r) => r.date !== null && overlapsWindow({ from: r.date, to: r.date }, restructuringWindow),
             );
         }
 
@@ -792,7 +797,9 @@ export default abstract class CorporateGroupService {
             }
             if (!window || !node.events) continue;
             for (const r of node.restructurings) {
-                if (!r.date) continue;
+                // Restructurings reach further back than the window (restructuringWindowOf);
+                // events describe the window itself.
+                if (!r.date || r.date < window.from || r.date > window.to) continue;
                 const type =
                     r.type === "MERGER"
                         ? r.role === "TRANSFERRING" ? "MERGED_INTO" : "MERGED_FROM"

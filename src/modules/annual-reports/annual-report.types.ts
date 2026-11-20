@@ -246,6 +246,14 @@ export type ReportWarning =
               /** The comparative amount for the same period in the following year's report. */
               valueInNextReport: number;
           }>;
+      }
+    | {
+          /**
+           * The report carries the group's figures only (scope "consolidated"):
+           * an IFRS filer need not tag the parent company's own statements.
+           */
+          code: "SOLO_FIGURES_MISSING";
+          message: string;
       };
 
 /** A field of the report mapped to one concept (ÅRL) or to candidate concepts in order of preference (IFRS). */
@@ -317,6 +325,13 @@ export interface AnnualReport<T> {
     balancesheet: BalanceSheet<T>;
     incomeStatement: IncomeStatement<T>;
     notes: Notes<T>;
+    /**
+     * Whether the report's investment property is measured at fair value
+     * (true) or at cost (false), read from the accounting policy and the fair
+     * value adjustment line; null when the report has no investment property
+     * or does not say. See annual-report.property.ts.
+     */
+    propertiesAtFairValue: boolean | null;
     /**
      * The company's own declared dividends and how much of each is in the equity
      * on its balance sheet. Null when the filing has no ÅRL figures for the

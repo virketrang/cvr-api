@@ -219,7 +219,9 @@ const companySchema = z.object({
         .openapi({
             description:
                 "Mergers and demergers the company took part in, with the other parties resolved from the register. " +
-                "All of them by default; only those inside the span in the period (from/to) and multi-snapshot (dates) views.",
+                "All of them by default; only those inside the period in the period view (from/to). In the " +
+                "multi-snapshot view (dates) they reach six years back from the last date, so all five financial " +
+                "years of a valuation under boafgiftsloven § 12 a are covered; the events list stays inside the dates.",
         }),
     snapshots: z
         .array(
